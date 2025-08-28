@@ -19,11 +19,9 @@ import java.util.function.Function;
 @Service
 public class JWTService {
 
-
     private String secretkey = "";
 
     public JWTService() {
-
         try {
             KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
             SecretKey sk = keyGen.generateKey();
@@ -33,28 +31,36 @@ public class JWTService {
         }
     }
 
-    public String generateToken(String email) {
+    private SecretKey getKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretkey);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    // Generate token with email and role
+    public String generateToken(String email, String role) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role);
         return Jwts.builder()
                 .claims()
                 .add(claims)
                 .subject(email)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000))
+                .expiration(new Date(System.currentTimeMillis() + 60 * 60 * 30 * 1000))
                 .and()
                 .signWith(getKey())
                 .compact();
 
     }
 
-    private SecretKey getKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretkey);
-        return Keys.hmacShaKeyFor(keyBytes);
+    // Extract email (subject)
+    public String extractUserName(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    public String extractUserName(String token) {
-        // extract the email from jwt token
-        return extractClaim(token, Claims::getSubject);
+    // Extract role
+    public String extractUserRole(String token) {
+        final Claims claims = extractAllClaims(token);
+        return claims.get("role", String.class);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
@@ -82,5 +88,4 @@ public class JWTService {
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
-
 }

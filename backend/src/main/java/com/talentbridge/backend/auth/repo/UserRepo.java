@@ -8,6 +8,7 @@ import com.talentbridge.backend.auth.model.Users;
 
 @Repository
 public interface UserRepo extends JpaRepository<Users, Integer>{
+    boolean existsByEmail(String email);
     Users findByEmail(String email);
 }
 
