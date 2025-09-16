@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {jwtDecode} from 'jwt-decode';
-
+import { setCookie } from "cookies-next";
 
 export default function page() {
   const [formData, setFormData] = useState({
@@ -26,67 +26,65 @@ export default function page() {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    // Client-side validation
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
-      setLoading(false);
-      return;
-    }
+  if (!formData.email || !formData.password) {
+    setError('Please fill in all fields');
+    setLoading(false);
+    return;
+  }
 
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setError('Please enter a valid email address');
-      setLoading(false);
-      return;
-    }
+  if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    setError('Please enter a valid email address');
+    setLoading(false);
+    return;
+  }
 
-    try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/login`,
-        {
-          email: formData.email,
-          password: formData.password
-        }
-      );
-      const decodedToken = jwtDecode(response.data);
-      console.log(decodedToken)
-      // Save token in localStorage
-      localStorage.setItem('token', response.data);
-      localStorage.setItem('userRole', decodedToken.role);
-
-      // Show success message
-      setSuccess('Login successful! Redirecting...');
-      console.log(response.data)
-      // Redirect based on role
-      setTimeout(() => {
-        if (decodedToken.role === 'jobseeker') {
-          router.push('/jobs');
-        } else if (decodedToken.role === 'recruiter') {
-          router.push('/dashboard');
-        } else {
-          router.push('/');
-        }
-      }, 1000);
-
-    } catch (err) {
-      console.error('Login error:', err);
-      
-      if (err.response?.data) {
-        // Handle specific error messages from backend
-        const errorMessage = err.response.data.message || err.response.data.error || 'Login failed';
-        setError(errorMessage);
-      } else if (err.request) {
-        setError('Network error. Please check your connection and try again.');
-      } else {
-        setError('Something went wrong. Please try again.');
+  try {
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/login`,
+      {
+        email: formData.email,
+        password: formData.password
       }
-    } finally {
-      setLoading(false);
+    );
+
+    const decodedToken = jwtDecode(response.data);
+
+    // ✅ Save in cookies instead of localStorage
+    setCookie("userRole", decodedToken.role, { maxAge: 60 * 60 * 24 * 7}); 
+    setCookie("email", decodedToken.sub, { maxAge: 60 * 60 * 24 * 7 });
+    
+    // Show success message
+    setSuccess("Login successful! Redirecting...");
+
+    // Redirect based on role
+    setTimeout(() => {
+      if (decodedToken.role === "jobseeker") {
+        router.push("/jobseeker/jobs");
+      } else if (decodedToken.role === "recruiter") {
+        router.push("/recruiter/dashboard");
+      } else {
+        router.push("/");
+      }
+    }, 1000);
+
+  } catch (err) {
+    console.error("Login error:", err);
+    if (err.response?.data) {
+      const errorMessage = err.response.data.message || err.response.data.error || "Login failed";
+      setError(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection and try again.");
+    } else {
+      setError("Something went wrong. Please try again.");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -226,7 +224,7 @@ export default function page() {
           </form>
 
           {/* Social login options */}
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -266,7 +264,7 @@ export default function page() {
                 </button>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="mt-6">
             <div className="relative">
