@@ -34,8 +34,10 @@ public class UserService {
     public String verify(Users user) {
         Authentication authentication = authManager.authenticate(new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword()));
    if (authentication.isAuthenticated()) {
+
         String role = repo.findByEmail(user.getEmail()).getRole();
-         return jwtService.generateToken(user.getEmail(), role)  ;
+        Long id = repo.findByEmail(user.getEmail()).getId();
+        return jwtService.generateToken(user.getEmail(), role, id)  ;
         } else {
             return "fail";
         }

@@ -1,10 +1,10 @@
-import HomeNavbar from '@/app/componets/HomeComponents/HomeNavbar'
 import React from 'react'
+import RecruiterNavbar from '../RecruiterComponents/RecruiterNavbar'
 
 export default function page() {
   return (
     <div>
-      <HomeNavbar/>
+        <RecruiterNavbar/>
         Recruiter dashboard
     </div>
   )

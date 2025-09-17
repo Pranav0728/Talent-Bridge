@@ -50,10 +50,11 @@ export default function page() {
         password: formData.password
       }
     );
-
+    
     const decodedToken = jwtDecode(response.data);
-
-    // ✅ Save in cookies instead of localStorage
+    localStorage.setItem('token', response.data);
+    localStorage.setItem('email', decodedToken.sub);
+    localStorage.setItem('userId', decodedToken.user_id);
     setCookie("userRole", decodedToken.role, { maxAge: 60 * 60 * 24 * 7}); 
     setCookie("email", decodedToken.sub, { maxAge: 60 * 60 * 24 * 7 });
     

@@ -19,26 +19,34 @@ import java.util.function.Function;
 @Service
 public class JWTService {
 
-    private String secretkey = "";
+    // private String secretkey = "";
 
-    public JWTService() {
-        try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-            SecretKey sk = keyGen.generateKey();
-            secretkey = Base64.getEncoder().encodeToString(sk.getEncoded());
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    // public JWTService() {
+    //     try {
+    //         KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
+    //         SecretKey sk = keyGen.generateKey();
+    //         secretkey = Base64.getEncoder().encodeToString(sk.getEncoded());
+    //     } catch (NoSuchAlgorithmException e) {
+    //         throw new RuntimeException(e);
+    //     }
+    // }
+
+    // private SecretKey getKey() {
+    //     byte[] keyBytes = Decoders.BASE64.decode(secretkey);
+    //     return Keys.hmacShaKeyFor(keyBytes);
+    // }
+    private final String secretKey = "YourSuperSecretKeyThatIsAtLeast32BytesLong!";
 
     private SecretKey getKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretkey);
+        byte[] keyBytes = Decoders.BASE64.decode(Base64.getEncoder().encodeToString(secretKey.getBytes()));
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
     // Generate token with email and role
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, String role, Long id) {
         Map<String, Object> claims = new HashMap<>();
+        System.out.println("generateToken: id = "+ id);
+        claims.put("user_id", id);
         claims.put("role", role);
         return Jwts.builder()
                 .claims()
@@ -61,6 +69,12 @@ public class JWTService {
     public String extractUserRole(String token) {
         final Claims claims = extractAllClaims(token);
         return claims.get("role", String.class);
+    }
+
+    // Extract id
+    public Long extractUserId(String token) {
+        final Claims claims = extractAllClaims(token);
+        return claims.get("user_id", Long.class);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
