@@ -42,19 +42,19 @@ export default function JobSeekerNavbar() {
 
   const navLinks = [
     { 
-      href: '/recruiter/dashboard', 
+      href: '/jobseeker/dashboard', 
       label: 'Dashboard', 
       icon: Home,
       description: 'Overview & Analytics'
     },
+    // { 
+    //   href: '/jobseeker/company', 
+    //   label: 'Company', 
+    //   icon: Building2,
+    //   description: 'Company Profile'
+    // },
     { 
-      href: '/recruiter/company', 
-      label: 'Company', 
-      icon: Building2,
-      description: 'Company Profile'
-    },
-    { 
-      href: '/recruiter/jobs', 
+      href: '/jobseeker/jobs', 
       label: 'Jobs', 
       icon: FileText,
       description: 'Manage Job Postings'
@@ -72,7 +72,7 @@ export default function JobSeekerNavbar() {
             </div>
             <div className="ml-3">
               <span className="text-lg font-bold text-gray-900">TalentBridge</span>
-              <span className="text-xs text-gray-500 ml-1">Recruiter</span>
+              <span className="text-xs text-gray-500 ml-1">JobSeeker</span>
             </div>
           </Link>
 
@@ -116,7 +116,7 @@ export default function JobSeekerNavbar() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">{user}</p>
-                    <p className="text-xs text-gray-500">Recruiter</p>
+                    <p className="text-xs text-gray-500">JobSeeker</p>
                   </div>
                 </div>
                 
@@ -184,7 +184,7 @@ export default function JobSeekerNavbar() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{user}</p>
-                      <p className="text-xs text-gray-500">Recruiter Account</p>
+                      <p className="text-xs text-gray-500">JobSeeker Account</p>
                     </div>
                   </div>
                 </div>

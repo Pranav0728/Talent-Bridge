@@ -53,6 +53,7 @@ export default function page() {
     
     const decodedToken = jwtDecode(response.data);
     localStorage.setItem('token', response.data);
+    console.log(response.data);
     localStorage.setItem('email', decodedToken.sub);
     localStorage.setItem('userId', decodedToken.user_id);
     setCookie("userRole", decodedToken.role, { maxAge: 60 * 60 * 24 * 7}); 

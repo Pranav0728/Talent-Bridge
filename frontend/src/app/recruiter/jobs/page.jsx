@@ -197,7 +197,7 @@ export default function JobsPage() {
 
   const formatSalary = (salary) => {
     if (!salary) return "Not specified";
-    return `₹${Number(salary).toLocaleString()}`;
+    return `${Number(salary).toLocaleString()}`;
   };
 
   const formatDate = (dateString) => {

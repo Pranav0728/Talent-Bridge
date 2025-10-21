@@ -34,6 +34,7 @@ public class RecruiterController {
     // ✅ Get Recruiter by ID
     @GetMapping("/{id}")
     public ResponseEntity<Recruiter> getRecruiterById(@PathVariable Long id) {
+        System.out.println("Fetching recruiter with ID: " + id);
         Optional<Recruiter> recruiter = recruiterService.getRecruiterById(id);
         return recruiter.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
