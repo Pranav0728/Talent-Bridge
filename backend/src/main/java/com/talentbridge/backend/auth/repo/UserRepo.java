@@ -7,7 +7,7 @@ import com.talentbridge.backend.auth.model.Users;
 
 
 @Repository
-public interface UserRepo extends JpaRepository<Users, Integer>{
+public interface UserRepo extends JpaRepository<Users, Long>{
     boolean existsByEmail(String email);
     Users findByEmail(String email);
 }

@@ -20,9 +20,17 @@ export default function page() {
   const [selectedJob, setSelectedJob] = useState(null)
   const [selectedRecruiter, setSelectedRecruiter] = useState(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
-  
+  const [userId, setUserId] = useState(null)
 
   const jobTypes = ['All', 'Full-time', 'Part-time', 'Internship', 'Contract', 'Remote']
+  
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null
+      setUserId(userId || null)
+    }
+    fetchUserId()
+  }, [])
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -151,7 +159,9 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
     setSelectedRecruiter(null)
   }
   const submitApplyForm = async (job) => {
-    console.log(job)
+    console.log(job.id)
+    console.log(userId)
+
   }
 
   const filteredJobs = useMemo(() => {

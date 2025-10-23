@@ -59,6 +59,12 @@ export default function JobSeekerNavbar() {
       icon: FileText,
       description: 'Manage Job Postings'
     },
+    { 
+      href: '/jobseeker/profile', 
+      label: 'Profile', 
+      icon: User,
+      description: 'Update Your Information'
+    },
   ];
 
   return (
@@ -110,6 +116,7 @@ export default function JobSeekerNavbar() {
           <div className="hidden md:flex items-center space-x-4">
             {user && (
               <div className="flex items-center space-x-3">
+                  <Link href="/jobseeker/profile" className="group flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200">
                 <div className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
@@ -119,6 +126,7 @@ export default function JobSeekerNavbar() {
                     <p className="text-xs text-gray-500">JobSeeker</p>
                   </div>
                 </div>
+                </Link>
                 
                 <button
                   onClick={handleLogout}
