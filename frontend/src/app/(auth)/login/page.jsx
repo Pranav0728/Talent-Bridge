@@ -65,7 +65,7 @@ export default function page() {
     // Redirect based on role
     setTimeout(() => {
       if (decodedToken.role === "jobseeker") {
-        router.push("/jobseeker/jobs");
+        router.push("/jobseeker/dashboard");
       } else if (decodedToken.role === "recruiter") {
         router.push("/recruiter/dashboard");
       } else {

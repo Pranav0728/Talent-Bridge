@@ -459,7 +459,7 @@ export default function CompanyProfilePage() {
                 )}
 
                 {/* Verification Status */}
-                <div className="pt-4 border-t border-gray-200">
+                {/* <div className="pt-4 border-t border-gray-200">
                   <div className="flex items-center space-x-2">
                     {companyData?.is_verified ? (
                       <>
@@ -473,7 +473,7 @@ export default function CompanyProfilePage() {
                       </>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
           </div>

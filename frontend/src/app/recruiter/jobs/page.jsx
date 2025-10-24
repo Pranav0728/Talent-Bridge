@@ -16,7 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import RecruiterNavbar from "../RecruiterComponents/RecruiterNavbar";
-
+import Link from "next/link";
 const jobTypes = ["Full-time", "Part-time", "Internship", "Contract", "Remote"];
 
 export default function JobsPage() {
@@ -476,7 +476,13 @@ export default function JobsPage() {
                     <div className="text-sm text-gray-500">
                       Posted on {formatDate(job.created_at)}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
+                      <Link 
+                        href={`/recruiter/applications/${job.jobId}`}
+                        className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-md transition-all duration-200"
+                      >
+                        View Applicants
+                      </Link>
                       {job.recruiter?.company_website && (
                         <a
                           href={job.recruiter.company_website

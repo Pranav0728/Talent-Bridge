@@ -1,210 +1,321 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react'
-import axios from 'axios'
-import JobSeekerNavbar from '../JobComponents/JobSeekerNavbar'
-import { Search, MapPin, Briefcase, Clock, DollarSign, Building2, X, Phone, Globe, Linkedin, ShieldCheck } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
+import JobSeekerNavbar from "../JobComponents/JobSeekerNavbar";
+import {
+  Search,
+  MapPin,
+  Briefcase,
+  Clock,
+  DollarSign,
+  Building2,
+  X,
+  Phone,
+  Globe,
+  Linkedin,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function page() {
-  const [jobs, setJobs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [recruiters, setRecruiters] = useState({})
-  const [type, setType] = useState('All')
-  const [location, setLocation] = useState('All')
-  const [minSalary, setMinSalary] = useState('')
-  const [sortBy, setSortBy] = useState('recent')
-  const [showApplyModal, setShowApplyModal] = useState(false)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [selectedJob, setSelectedJob] = useState(null)
-  const [selectedRecruiter, setSelectedRecruiter] = useState(null)
-  const [detailsLoading, setDetailsLoading] = useState(false)
-  const [userId, setUserId] = useState(null)
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [recruiters, setRecruiters] = useState({});
+  const [type, setType] = useState("All");
+  const [location, setLocation] = useState("All");
+  const [minSalary, setMinSalary] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedRecruiter, setSelectedRecruiter] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [appliedJobIds, setAppliedJobIds] = useState([]);
 
-  const jobTypes = ['All', 'Full-time', 'Part-time', 'Internship', 'Contract', 'Remote']
-  
+
+  const jobTypes = [
+    "All",
+    "Full-time",
+    "Part-time",
+    "Internship",
+    "Contract",
+    "Remote",
+  ];
+
   useEffect(() => {
     const fetchUserId = async () => {
-      const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null
-      setUserId(userId || null)
-    }
-    fetchUserId()
-  }, [])
+      const userId =
+        typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+      setUserId(userId || null);
+    };
+    fetchUserId();
+  }, []);
 
   useEffect(() => {
     const fetchJobs = async () => {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
         const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/jobs`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        })
-        setJobs(res.data || [])
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        setJobs(res.data || []);
       } catch (err) {
-        console.error('Error fetching jobs:', err)
-        setError('Unable to fetch jobs. Please try again.')
+        console.error("Error fetching jobs:", err);
+        setError("Unable to fetch jobs. Please try again.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchJobs()
-  }, [])
-    useEffect(() => {
-    const token = localStorage.getItem('token')
-const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterId || job.recruiter_id).filter(Boolean))]
+    };
+    fetchJobs();
+  }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const uniqueRecruiterIds = [
+      ...new Set(
+        jobs
+          .map((job) => job.recruiter?.recruiterId || job.recruiter_id)
+          .filter(Boolean)
+      ),
+    ];
 
-    if (uniqueRecruiterIds.length === 0) return
+    if (uniqueRecruiterIds.length === 0) return;
 
     const fetchRecruiters = async () => {
       try {
-        const recruiterData = {}
+        const recruiterData = {};
         await Promise.all(
           uniqueRecruiterIds.map(async (id) => {
-            const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${id}`, {
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
-            })
-            recruiterData[id] = res.data
+            const res = await axios.get(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${id}`,
+              {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              }
+            );
+            recruiterData[id] = res.data;
           })
-        )
-        setRecruiters(recruiterData)
+        );
+        setRecruiters(recruiterData);
       } catch (err) {
-        console.error('Error fetching recruiters:', err)
-        setError('Unable to fetch recruiters. Please try again.')
+        console.error("Error fetching recruiters:", err);
+        setError("Unable to fetch recruiters. Please try again.");
       }
-    }
+    };
 
-    fetchRecruiters()
-  }, [jobs])
+    fetchRecruiters();
+  }, [jobs]);
+  
+  useEffect(() => {
+    if (!userId) return;
+    const fetchAppliedJobs = async () => {
+      try {
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/user/${userId}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        console.log(res.data.map((app)=>app.jobId))
+        setAppliedJobs(new Set(res.data.map((app) => app.jobId)));
+      } catch (err) {
+        console.error("Error fetching applied jobs:", err);
+      }
+    };
+    fetchAppliedJobs();
+  }, [userId]);
 
   const formatSalary = (salary) => {
-    if (!salary) return 'Not specified'
-    const num = Number(salary)
-    if (Number.isNaN(num)) return 'Not specified'
-    return `${num.toLocaleString()}`
-  }
+    if (!salary) return "Not specified";
+    const num = Number(salary);
+    if (Number.isNaN(num)) return "Not specified";
+    return `${num.toLocaleString()}`;
+  };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '—'
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return '—'
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-  }
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Submit job application
+  console.log(appliedJobs)
+  const submitApplyForm = async (job) => {
+    try {
+      setApplyLoading(true);
+      const token = localStorage.getItem("token");
+
+      if (!token || !userId) {
+        alert("Please login to apply for jobs");
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/apply?userId=${userId}&jobId=${job.id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        // Add job to applied jobs set
+        console.log("id"+ job.id)
+        setAppliedJobs((prev) => new Set([...prev, job.id]));
+      }
+    } catch (error) {
+      console.error("Error applying for job:", error);
+
+      if (error.response?.status === 409) {
+        alert("You have already applied for this job!");
+      } else if (error.response?.status === 401) {
+        alert("Please login to apply for jobs");
+      } else {
+        alert("Failed to submit application. Please try again.");
+      }
+    } finally {
+      setApplyLoading(false);
+    }
+  };
 
   // Normalize API fields (snake_case/camelCase)
   const normalizeRecruiter = (r) => ({
     recruiterId: r?.recruiterId ?? r?.id ?? null,
-    company_name: r?.company_name ?? r?.companyName ?? 'Unknown Company',
-    company_description: r?.company_description ?? r?.companyDescription ?? '',
-    company_website: r?.company_website ?? r?.companyWebsite ?? '',
-    company_logo: r?.company_logo ?? r?.companyLogo ?? '',
-    industry: r?.industry ?? '',
+    company_name: r?.company_name ?? r?.companyName ?? "Unknown Company",
+    company_description: r?.company_description ?? r?.companyDescription ?? "",
+    company_website: r?.company_website ?? r?.companyWebsite ?? "",
+    company_logo: r?.company_logo ?? r?.companyLogo ?? "",
+    industry: r?.industry ?? "",
     established_year: r?.established_year ?? r?.establishedYear ?? null,
-    location: r?.location ?? '',
-    phone_number: r?.phone_number ?? r?.phoneNumber ?? '',
-    linkedin_url: r?.linkedin_url ?? r?.linkedinUrl ?? '',
+    location: r?.location ?? "",
+    phone_number: r?.phone_number ?? r?.phoneNumber ?? "",
+    linkedin_url: r?.linkedin_url ?? r?.linkedinUrl ?? "",
     is_verified: Boolean(r?.is_verified),
     created_at: r?.created_at ?? r?.createdAt ?? null,
     updated_at: r?.updated_at ?? r?.updatedAt ?? null,
-  })
-    const normalizedJobs = useMemo(() => {
+  });
+  const normalizedJobs = useMemo(() => {
     return (jobs || []).map((job) => ({
       id: job.job_id ?? job.jobId ?? job.id,
-      title: job.job_title ?? job.jobTitle ?? 'Untitled Role',
-      company: job.company ?? job.company_name ?? 'Confidential',
-      location: job.location ?? 'Remote',
-      description: job.description ?? '',
-      type: job.job_type ?? job.jobType ?? '—',
+      title: job.job_title ?? job.jobTitle ?? "Untitled Role",
+      company: job.company ?? job.company_name ?? "Confidential",
+      location: job.location ?? "Remote",
+      description: job.description ?? "",
+      type: job.job_type ?? job.jobType ?? "—",
       salary: job.salary ?? job.min_salary ?? null,
       postedAt: job.created_at ?? job.createdAt ?? job.posted_at ?? null,
-      recruiter_id: job.recruiter?.recruiterId ?? job.recruiter_id ?? job.recruiterId ?? null,
-    }))
-  }, [jobs])
+      recruiter_id:
+        job.recruiter?.recruiterId ??
+        job.recruiter_id ??
+        job.recruiterId ??
+        null,
+    }));
+  }, [jobs]);
 
   // Handlers for modals
   const handleApplyClick = (job) => {
-    setSelectedJob(job)
-    setShowApplyModal(true)
-  }
+    setSelectedJob(job);
+    setShowApplyModal(true);
+  };
   const closeApplyModal = () => {
-    setShowApplyModal(false)
-    setSelectedJob(null)
-  }
+    setShowApplyModal(false);
+    setSelectedJob(null);
+  };
 
   const handleDetailsClick = async (recruiterId) => {
-    if (!recruiterId) return
-    setShowDetailsModal(true)
-    setDetailsLoading(true)
+    if (!recruiterId) return;
+    setShowDetailsModal(true);
+    setDetailsLoading(true);
     try {
       // Use cached recruiter if present, else fetch
-      let data = recruiters[recruiterId]
+      let data = recruiters[recruiterId];
       if (!data) {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${recruiterId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        data = res.data
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${recruiterId}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        data = res.data;
       }
-      setSelectedRecruiter(normalizeRecruiter(data))
+      setSelectedRecruiter(normalizeRecruiter(data));
     } catch (err) {
-      console.error('Error fetching recruiter details:', err)
-      setError('Unable to load recruiter details.')
+      console.error("Error fetching recruiter details:", err);
+      setError("Unable to load recruiter details.");
     } finally {
-      setDetailsLoading(false)
+      setDetailsLoading(false);
     }
-  }
+  };
   const closeDetailsModal = () => {
-    setShowDetailsModal(false)
-    setSelectedRecruiter(null)
-  }
-  const submitApplyForm = async (job) => {
-    console.log(job.id)
-    console.log(userId)
-
-  }
+    setShowDetailsModal(false);
+    setSelectedRecruiter(null);
+  };
 
   const filteredJobs = useMemo(() => {
-    let list = normalizedJobs
+    let list = normalizedJobs;
 
     // Search filter
     if (search.trim()) {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase();
       list = list.filter(
         (j) =>
           j.title.toLowerCase().includes(q) ||
           j.company.toLowerCase().includes(q) ||
           j.location.toLowerCase().includes(q) ||
           j.description.toLowerCase().includes(q)
-      )
+      );
     }
 
     // Type filter
-    if (type !== 'All') {
-      list = list.filter((j) => (j.type || '').toLowerCase() === type.toLowerCase())
+    if (type !== "All") {
+      list = list.filter(
+        (j) => (j.type || "").toLowerCase() === type.toLowerCase()
+      );
     }
 
     // Location filter
-    if (location !== 'All') {
-      list = list.filter((j) => (j.location || '').toLowerCase().includes(location.toLowerCase()))
+    if (location !== "All") {
+      list = list.filter((j) =>
+        (j.location || "").toLowerCase().includes(location.toLowerCase())
+      );
     }
 
     // Salary threshold
     if (minSalary && !Number.isNaN(Number(minSalary))) {
-      list = list.filter((j) => Number(j.salary || 0) >= Number(minSalary))
+      list = list.filter((j) => Number(j.salary || 0) >= Number(minSalary));
     }
 
     // Sorting
-    if (sortBy === 'recent') {
+    if (sortBy === "recent") {
       list = list.sort(
-        (a, b) => new Date(b.postedAt || 0).getTime() - new Date(a.postedAt || 0).getTime()
-      )
-    } else if (sortBy === 'salary') {
-      list = list.sort((a, b) => Number(b.salary || 0) - Number(a.salary || 0))
+        (a, b) =>
+          new Date(b.postedAt || 0).getTime() -
+          new Date(a.postedAt || 0).getTime()
+      );
+    } else if (sortBy === "salary") {
+      list = list.sort((a, b) => Number(b.salary || 0) - Number(a.salary || 0));
     }
 
-    return list
-  }, [normalizedJobs, search, type, location, minSalary, sortBy])
+    return list;
+  }, [normalizedJobs, search, type, location, minSalary, sortBy]);
 
   const SkeletonCard = () => (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -221,7 +332,7 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -237,7 +348,8 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                 Find your next role with confidence
               </h1>
               <p className="mt-3 text-sm md:text-base text-indigo-100">
-                Personalized filters, modern UI, and curated listings for job seekers.
+                Personalized filters, modern UI, and curated listings for job
+                seekers.
               </p>
 
               {/* Search & Filters */}
@@ -337,11 +449,10 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                     <div className="mt-1 flex items-center space-x-2 text-sm text-gray-600">
                       <Building2 className="h-4 w-4 text-indigo-600" />
                       <span>
-                      {recruiters[job.recruiter_id]?.company_name ||
-                      recruiters[job.recruiter_id]?.companyName ||
-                      'Unknown Company'}
-                    </span>
-
+                        {recruiters[job.recruiter_id]?.company_name ||
+                          recruiters[job.recruiter_id]?.companyName ||
+                          "Unknown Company"}
+                      </span>
                     </div>
                   </div>
                   <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">
@@ -367,35 +478,44 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                 </p>
 
                 {/* Footer */}
-                 <div className="mt-6 flex items-center justify-between">
-                <div className="flex items-center text-gray-500">
-                  <Clock className="mr-2 h-4 w-4" />
-                  <span className="text-xs">Posted {formatDate(job.postedAt)}</span>
-                </div>
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center text-gray-500">
+                    <Clock className="mr-2 h-4 w-4" />
+                    <span className="text-xs">
+                      Posted {formatDate(job.postedAt)}
+                    </span>
+                  </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-300 hover:bg-indigo-700 hover:shadow-md focus-visible:ring-2 focus-visible:ring-indigo-400"
-                    onClick={() => handleApplyClick(job)}
-                  >
-                    Apply
-                  </button>
-                  <button
-                    disabled={!job.recruiter_id}
-                    className=" rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 transition-all duration-300 hover:bg-gray-200"
-                    onClick={() => handleDetailsClick(job.recruiter_id)}
-                  >
-                    Details
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      className={`rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-all duration-300 focus-visible:ring-2 ${
+                        appliedJobs.has(job.id)
+                          ? "bg-green-100 text-green-800 cursor-not-allowed"
+                          : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md focus-visible:ring-indigo-400"
+                      }`}
+                      onClick={() =>
+                        !appliedJobs.has(job.id) && handleApplyClick(job)
+                      }
+                      disabled={appliedJobs.has(job.id)}
+                    >
+                      {appliedJobs.has(job.id) ? "Applied" : "Apply"}
+                    </button>
+                    <button
+                      disabled={!job.recruiter_id}
+                      className=" rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 transition-all duration-300 hover:bg-gray-200"
+                      onClick={() => handleDetailsClick(job.recruiter_id)}
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-              {/* ... existing code ... */}
-            </article>
-          ))}
-        </div>)}
+                {/* ... existing code ... */}
+              </article>
+            ))}
+          </div>
+        )}
 
         {showApplyModal && selectedJob && (
-
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
             <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-gray-200 transform transition-all duration-300 scale-100">
               <button
@@ -405,7 +525,9 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                 <X className="h-4 w-4 text-gray-700" />
               </button>
               <div className="mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Apply for {selectedJob.title}</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Apply for {selectedJob.title}
+                </h3>
                 <p className="mt-1 text-sm text-gray-600">
                   Are you sure you want to apply for this position?
                 </p>
@@ -420,10 +542,8 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                 <button
                   onClick={() => {
                     // Placeholder for real apply flow
-                    closeApplyModal()
-                    submitApplyForm(selectedJob)
-                    // You can replace with real apply action later
-                    alert('Application submitted! Best of luck.')
+                    closeApplyModal();
+                    submitApplyForm(selectedJob);
                   }}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
                 >
@@ -463,7 +583,7 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                       />
                     ) : (
                       <div className="h-14 w-14 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold">
-                        {selectedRecruiter.company_name?.[0] || 'C'}
+                        {selectedRecruiter.company_name?.[0] || "C"}
                       </div>
                     )}
                     <div className="flex-1">
@@ -477,7 +597,9 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-gray-600">{selectedRecruiter.industry || '—'}</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {selectedRecruiter.industry || "—"}
+                      </p>
                     </div>
                   </div>
 
@@ -485,11 +607,15 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center text-gray-700">
                       <MapPin className="mr-2 h-4 w-4 text-blue-600" />
-                      <span className="text-sm">{selectedRecruiter.location || '—'}</span>
+                      <span className="text-sm">
+                        {selectedRecruiter.location || "—"}
+                      </span>
                     </div>
                     <div className="flex items-center text-gray-700">
                       <Phone className="mr-2 h-4 w-4 text-indigo-600" />
-                      <span className="text-sm">{selectedRecruiter.phone_number || '—'}</span>
+                      <span className="text-sm">
+                        {selectedRecruiter.phone_number || "—"}
+                      </span>
                     </div>
                     <div className="flex items-center text-gray-700">
                       <Globe className="mr-2 h-4 w-4 text-purple-600" />
@@ -525,9 +651,11 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
 
                   {/* About */}
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-1">About Company</h4>
+                    <h4 className="text-sm font-semibold text-gray-800 mb-1">
+                      About Company
+                    </h4>
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      {selectedRecruiter.company_description || '—'}
+                      {selectedRecruiter.company_description || "—"}
                     </p>
                   </div>
 
@@ -542,12 +670,14 @@ const uniqueRecruiterIds = [...new Set(jobs.map(job => job.recruiter?.recruiterI
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600">Recruiter details not available.</p>
+                <p className="text-gray-600 text-sm text-center">
+                  No recruiter details available.
+                </p>
               )}
             </div>
           </div>
         )}
       </section>
     </div>
-  )
+  );
 }

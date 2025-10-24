@@ -22,7 +22,7 @@ export default function Home() {
     if (role === "recruiter") {
       router.replace("/recruiter/dashboard");
     } else if (role === "jobseeker") {
-      router.replace("/jobseeker/jobs");
+      router.replace("/jobseeker/dashboard");
     }
   }, [router]);
 
