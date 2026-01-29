@@ -16,6 +16,7 @@ import {
   Linkedin,
   ShieldCheck,
 } from "lucide-react";
+import SkillMatchResult from "@/app/componets/SkillMatchResult";
 
 export default function page() {
   const [jobs, setJobs] = useState([]);
@@ -36,7 +37,7 @@ export default function page() {
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [applyLoading, setApplyLoading] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
-
+  const [userProfile, setUserProfile] = useState(null);
 
   const jobTypes = [
     "All",
@@ -82,7 +83,7 @@ export default function page() {
       ...new Set(
         jobs
           .map((job) => job.recruiter?.recruiterId || job.recruiter_id)
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ];
 
@@ -97,10 +98,10 @@ export default function page() {
               `${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${id}`,
               {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
-              }
+              },
             );
             recruiterData[id] = res.data;
-          })
+          }),
         );
         setRecruiters(recruiterData);
       } catch (err) {
@@ -111,26 +112,34 @@ export default function page() {
 
     fetchRecruiters();
   }, [jobs]);
-  
+
   useEffect(() => {
     if (!userId) return;
-    const fetchAppliedJobs = async () => {
+    const fetchData = async () => {
       try {
         const token =
           typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const res = await axios.get(
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        // Fetch applied jobs
+        const appliedRes = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/user/${userId}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
+          { headers },
         );
-        console.log(res.data.map((app)=>app.jobId))
-        setAppliedJobs(new Set(res.data.map((app) => app.jobId)));
+        setAppliedJobs(new Set(appliedRes.data.map((app) => app.jobId)));
+
+        // Fetch user profile
+        const profileRes = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/userProfile/user/${userId}`,
+          { headers },
+        );
+        setUserProfile(profileRes.data);
+        console.log("UserProfile: " + profileRes.data.skills);
       } catch (err) {
-        console.error("Error fetching applied jobs:", err);
+        console.error("Error fetching user data:", err);
       }
     };
-    fetchAppliedJobs();
+    fetchData();
   }, [userId]);
 
   const formatSalary = (salary) => {
@@ -152,7 +161,7 @@ export default function page() {
   };
 
   // Submit job application
-  console.log(appliedJobs)
+  console.log(appliedJobs);
   const submitApplyForm = async (job) => {
     try {
       setApplyLoading(true);
@@ -171,12 +180,12 @@ export default function page() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.status === 200 || response.status === 201) {
         // Add job to applied jobs set
-        console.log("id"+ job.id)
+        console.log("id" + job.id);
         setAppliedJobs((prev) => new Set([...prev, job.id]));
       }
     } catch (error) {
@@ -194,7 +203,6 @@ export default function page() {
     }
   };
 
-  // Normalize API fields (snake_case/camelCase)
   const normalizeRecruiter = (r) => ({
     recruiterId: r?.recruiterId ?? r?.id ?? null,
     company_name: r?.company_name ?? r?.companyName ?? "Unknown Company",
@@ -211,26 +219,47 @@ export default function page() {
     updated_at: r?.updated_at ?? r?.updatedAt ?? null,
   });
   const normalizedJobs = useMemo(() => {
-    return (jobs || []).map((job) => ({
-      id: job.job_id ?? job.jobId ?? job.id,
-      title: job.job_title ?? job.jobTitle ?? "Untitled Role",
-      company: job.company ?? job.company_name ?? "Confidential",
-      location: job.location ?? "Remote",
-      description: job.description ?? "",
-      type: job.job_type ?? job.jobType ?? "—",
-      salary: job.salary ?? job.min_salary ?? null,
-      postedAt: job.created_at ?? job.createdAt ?? job.posted_at ?? null,
-      recruiter_id:
-        job.recruiter?.recruiterId ??
-        job.recruiter_id ??
-        job.recruiterId ??
-        null,
-    }));
-  }, [jobs]);
+    return (jobs || []).map((job) => {
+      const jobSkills = job.skills ?? ["reactjs", "nodejs", "mongodb"];
+      
+      // Calculate match score
+      let matchScore = 0;
+      if (userProfile?.skills && jobSkills.length > 0) {
+        const userSkillsLower = userProfile.skills.map((s) => s.toLowerCase());
+        const jobSkillsLower = jobSkills.map((s) => s.toLowerCase());
+        const matchCount = jobSkillsLower.filter((skill) =>
+          userSkillsLower.some(
+            (userSkill) =>
+              userSkill.includes(skill) || skill.includes(userSkill),
+          ),
+        ).length;
+        matchScore = Math.round((matchCount / jobSkillsLower.length) * 100);
+      }
+
+      return {
+        id: job.job_id ?? job.jobId ?? job.id,
+        title: job.job_title ?? job.jobTitle ?? "Untitled Role",
+        company: job.company ?? job.company_name ?? "Confidential",
+        location: job.location ?? "Remote",
+        description: job.description ?? "",
+        type: job.job_type ?? job.jobType ?? "—",
+        salary: job.salary ?? job.min_salary ?? null,
+        postedAt: job.created_at ?? job.createdAt ?? job.posted_at ?? null,
+        skills: jobSkills,
+        matchScore,
+        recruiter_id:
+          job.recruiter?.recruiterId ??
+          job.recruiter_id ??
+          job.recruiterId ??
+          null,
+      };
+    });
+  }, [jobs, userProfile]);
 
   // Handlers for modals
   const handleApplyClick = (job) => {
     setSelectedJob(job);
+    console.log("SelectedJob: " + job.skills);
     setShowApplyModal(true);
   };
   const closeApplyModal = () => {
@@ -252,7 +281,7 @@ export default function page() {
           `${process.env.NEXT_PUBLIC_API_URL}/api/recruiters/${recruiterId}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
+          },
         );
         data = res.data;
       }
@@ -280,21 +309,21 @@ export default function page() {
           j.title.toLowerCase().includes(q) ||
           j.company.toLowerCase().includes(q) ||
           j.location.toLowerCase().includes(q) ||
-          j.description.toLowerCase().includes(q)
+          j.description.toLowerCase().includes(q),
       );
     }
 
     // Type filter
     if (type !== "All") {
       list = list.filter(
-        (j) => (j.type || "").toLowerCase() === type.toLowerCase()
+        (j) => (j.type || "").toLowerCase() === type.toLowerCase(),
       );
     }
 
     // Location filter
     if (location !== "All") {
       list = list.filter((j) =>
-        (j.location || "").toLowerCase().includes(location.toLowerCase())
+        (j.location || "").toLowerCase().includes(location.toLowerCase()),
       );
     }
 
@@ -308,10 +337,12 @@ export default function page() {
       list = list.sort(
         (a, b) =>
           new Date(b.postedAt || 0).getTime() -
-          new Date(a.postedAt || 0).getTime()
+          new Date(a.postedAt || 0).getTime(),
       );
     } else if (sortBy === "salary") {
       list = list.sort((a, b) => Number(b.salary || 0) - Number(a.salary || 0));
+    } else if (sortBy === "match") {
+      list = list.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
     }
 
     return list;
@@ -404,6 +435,9 @@ export default function page() {
                   <option value="salary" className="bg-indigo-600">
                     Sort by Salary
                   </option>
+                  <option value="match" className="bg-indigo-600">
+                    Sort by Match %
+                  </option>
                 </select>
               </div>
             </div>
@@ -455,9 +489,16 @@ export default function page() {
                       </span>
                     </div>
                   </div>
-                  <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">
-                    {job.type}
-                  </span>
+                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    {job.matchScore > 0 && (
+                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 ring-1 ring-green-100">
+                        {job.matchScore}% Match
+                      </span>
+                    )}
+                    <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">
+                      {job.type}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Meta */}
@@ -473,7 +514,7 @@ export default function page() {
                 </div>
 
                 {/* Description */}
-                <p className="mt-4 overflow-hidden max-h-[4.5rem] text-sm text-gray-700">
+                <p className="mt-4 max-h-[4.5rem] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 text-sm text-gray-700">
                   {job.description}
                 </p>
 
@@ -532,6 +573,20 @@ export default function page() {
                   Are you sure you want to apply for this position?
                 </p>
               </div>
+
+              {/* Skill Match Result */}
+              {userProfile && (
+                <div className="mb-4">
+                  <SkillMatchResult
+                    candidateSkills={userProfile.skills}
+                    jobSkills={selectedJob.skills || []}
+                    matchScore={selectedJob.matchScore}
+                  />
+                  {console.log("UserSkills: " + userProfile.skills)}
+                  {console.log("JobSkills: " + selectedJob.skills)}
+                </div>
+              )}
+
               <div className="mt-6 flex justify-end space-x-2">
                 <button
                   onClick={closeApplyModal}
@@ -597,6 +652,7 @@ export default function page() {
                           </span>
                         )}
                       </div>
+
                       <p className="mt-1 text-sm text-gray-600">
                         {selectedRecruiter.industry || "—"}
                       </p>
