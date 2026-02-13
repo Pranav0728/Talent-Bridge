@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import SkillActionPanel from './SkillActionPanel';
 
 export default function SkillMatchResult({ candidateSkills, jobSkills, matchScore }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedSkill, setSelectedSkill] = useState(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   useEffect(() => {
     if (candidateSkills?.length > 0 && jobSkills?.length > 0) {
@@ -59,6 +62,16 @@ export default function SkillMatchResult({ candidateSkills, jobSkills, matchScor
     );
   }
 
+  const handleSkillClick = (skill) => {
+    setSelectedSkill(skill);
+    setIsPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setIsPanelOpen(false);
+    setSelectedSkill(null);
+  };
+
   if (!result) return null;
   const displayPercentage = matchScore !== undefined ? matchScore : result.matchPercentage;
   return (
@@ -109,9 +122,13 @@ export default function SkillMatchResult({ candidateSkills, jobSkills, matchScor
           <div className="flex flex-wrap gap-2">
             {result.missingSkills.length > 0 ? (
               result.missingSkills.map((skill, index) => (
-                <span key={index} className="px-3 py-1 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
+                <button
+                  key={index}
+                  onClick={() => handleSkillClick(skill)}
+                  className="px-3 py-1 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 cursor-pointer hover:shadow-sm"
+                >
                   {skill}
-                </span>
+                </button>
               ))
             ) : (
               <span className="text-sm text-gray-400">No missing skills</span>
@@ -119,6 +136,14 @@ export default function SkillMatchResult({ candidateSkills, jobSkills, matchScor
           </div>
         </div>
       </div>
+
+      {/* Skill Action Panel */}
+      <SkillActionPanel
+        skillName={selectedSkill}
+        isOpen={isPanelOpen}
+        onClose={closePanel}
+        currentMatchScore={displayPercentage}
+      />
     </div>
   );
 }

@@ -1,0 +1,18 @@
+{
+  "skill": "JavaScript",
+  "importance": "JavaScript is fundamental for modern web development. This role requires building interactive user interfaces and handling client-side logic, making JavaScript proficiency essential for creating responsive and dynamic applications.",
+  "learningRoadmap": [
+    "Master ES6+ syntax, arrow functions, destructuring, and template literals - these are used daily in modern codebases",
+    "Understand asynchronous JavaScript including Promises, async/await, and error handling for API calls",
+    "Learn React/Vue framework basics, state management, and component lifecycle for building scalable applications"
+  ],
+  "miniTask": "Build a todo application with local storage that demonstrates event handling, DOM manipulation, and async API calls to a mock backend",
+  "estimatedTime": "3-4 weeks",
+  "priority": "Critical",
+  "matchIncrease": 20,
+  "interviewTips": [
+    "Explain the difference between var, let, and const, and when you'd use each",
+    "Describe how you handle asynchronous operations and error handling in JavaScript"
+  ],
+  "resumeTip": "List JavaScript in your technical skills section and mention specific projects where you used ES6+ features, async/await, and modern frameworks"
+}
