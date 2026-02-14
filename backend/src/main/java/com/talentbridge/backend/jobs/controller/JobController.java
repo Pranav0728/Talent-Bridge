@@ -37,7 +37,7 @@ public class JobController {
         return jobService.getJobById(jobId)
                 .map(existingJob -> {
                     // Update fields
-                    existingJob.setJobTitle(updatedJob.getJob_title());
+                    existingJob.setJobTitle(updatedJob.getJobTitle());
                     existingJob.setDescription(updatedJob.getDescription());
                     existingJob.setLocation(updatedJob.getLocation());
                     existingJob.setJob_type(updatedJob.getJob_type());

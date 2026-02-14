@@ -16,6 +16,8 @@ import {
   XCircle, 
   Plus,
   Eye,
+  Edit,
+  Trash2,
   MapPin,
   Calendar,
   DollarSign,
@@ -27,7 +29,9 @@ import {
   Award,
   Activity,
   BookOpen,
-  Zap
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react'
 import { 
   BarChart, 
@@ -56,6 +60,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     totalApplications: 0,
     pendingApplications: 0,
+    inProcessApplications: 0,
     acceptedApplications: 0,
     rejectedApplications: 0,
     profileCompletion: 0,
@@ -130,9 +135,11 @@ export default function Dashboard() {
       const profileCompletion = calculateProfileCompletion(profileData)
 
       // Calculate stats
+      const inProcessApplications = applicationsData.filter(app => app.status === 'PROCESS').length
       const stats = {
         totalApplications: applicationsData.length,
         pendingApplications: applicationsData.filter(app => app.status === 'APPLIED').length,
+        inProcessApplications: inProcessApplications,
         acceptedApplications: applicationsData.filter(app => app.status === 'ACCEPTED').length,
         rejectedApplications: applicationsData.filter(app => app.status === 'REJECTED').length,
         profileCompletion: profileCompletion,
@@ -196,7 +203,9 @@ export default function Dashboard() {
   const applicationStatusData = [
     { name: 'Applied', value: stats.pendingApplications, color: '#3B82F6' },
     { name: 'Accepted', value: stats.acceptedApplications, color: '#10B981' },
-    { name: 'Rejected', value: stats.rejectedApplications, color: '#EF4444' }
+    { name: 'Rejected', value: stats.rejectedApplications, color: '#EF4444' },
+    { name: 'In Process', value: stats.inProcessApplications, color: '#F59E0B' },
+
   ]
 
   const monthlyApplicationsData = [
@@ -504,6 +513,13 @@ export default function Dashboard() {
                             <StatusIcon className="w-3 h-3 inline mr-1" />
                             {application.status}
                           </span>
+                          <Link
+                            href={`/jobseeker/applications/${application.id}`}
+                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
                         </div>
                       </div>
                     </div>

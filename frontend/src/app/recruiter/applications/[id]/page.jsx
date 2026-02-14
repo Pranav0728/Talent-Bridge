@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
 import RecruiterNavbar from '../../RecruiterComponents/RecruiterNavbar'
+import InterviewRoundsModal from '../../RecruiterComponents/InterviewRoundsModal'
 import { 
   User, 
   Briefcase, 
@@ -20,7 +21,8 @@ import {
   ChevronLeft,
   Search,
   Filter,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 
 function page() {
@@ -32,9 +34,11 @@ function page() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [statusFilter, setStatusFilter] = useState('ALL')
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
   const [updateLoading, setUpdateLoading] = useState(false)
+  const [showInterviewModal, setShowInterviewModal] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState(null)
   const [message, setMessage] = useState({ type: '', text: '' })
 
   // Fetch job details and applications
@@ -55,15 +59,30 @@ function page() {
         )
         setJob(jobResponse.data)
         
-        // Fetch applications for this job
-        const applicationsResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${jobId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
+        // Fetch applications for this job with enhanced interview round data
+        let applicationsResponse;
+        try {
+          // Try enhanced endpoint first
+          applicationsResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${jobId}/enhanced`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
             }
-          }
-        )
+          )
+        } catch (appError) {
+          console.warn('Enhanced endpoint failed, falling back to basic applications:', appError.message)
+          // Fallback to basic applications if enhanced endpoint fails
+          applicationsResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${jobId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          )
+        }
         setApplications(applicationsResponse.data)
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -78,40 +97,236 @@ function page() {
     }
   }, [jobId])
 
+  // Enhanced Application Status Component
+  const EnhancedApplicationStatus = ({ application }) => {
+    // Handle PROCESS conversion for display
+    const displayStatus = application.status === 'PROCESS' ? 'PROCESS' : application.status;
+    
+    const [enhancedStatus, setEnhancedStatus] = useState({
+      status: displayStatus,
+      label: displayStatus,
+      color: 'blue'
+    })
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+      const fetchRounds = async () => {
+        try {
+          setLoading(true)
+          const rounds = await fetchInterviewRounds(application.user?.id, application.jobId)
+          const enhanced = getEnhancedStatus(application, rounds?.rounds || [])
+          setEnhancedStatus(enhanced)
+        } catch (err) {
+          console.error('Error fetching interview rounds for status:', err)
+          // Fallback to basic status with PROCESS conversion
+          const fallbackStatus = application.status === 'PROCESS' ? 'PROCESS' : application.status;
+          setEnhancedStatus({
+            status: fallbackStatus,
+            label: fallbackStatus,
+            color: fallbackStatus === 'ACCEPTED' ? 'green' : 
+                   fallbackStatus === 'REJECTED' ? 'red' : 'blue'
+          })
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchRounds()
+    }, [application])
+
+    if (loading) {
+      return (
+        <div className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 animate-pulse">
+          Loading...
+        </div>
+      )
+    }
+
+    const getStatusIcon = () => {
+      switch (enhancedStatus.status) {
+        case 'WAITING':
+          return <Clock className="w-4 h-4 inline mr-1" />
+        case 'ONGOING':
+          return <RefreshCw className="w-4 h-4 inline mr-1" />
+        case 'ACCEPTED':
+          return <CheckCircle className="w-4 h-4 inline mr-1" />
+        case 'REJECTED':
+          return <XCircle className="w-4 h-4 inline mr-1" />
+        default:
+          return <Clock className="w-4 h-4 inline mr-1" />
+      }
+    }
+
+    const getStatusColor = () => {
+      switch (enhancedStatus.color) {
+        case 'yellow':
+          return 'bg-yellow-100 text-yellow-800'
+        case 'purple':
+          return 'bg-purple-100 text-purple-800'
+        case 'green':
+          return 'bg-green-100 text-green-800'
+        case 'red':
+          return 'bg-red-100 text-red-800'
+        default:
+          return 'bg-blue-100 text-blue-800'
+      }
+    }
+
+    return (
+      <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}>
+        {getStatusIcon()}
+        {enhancedStatus.label}
+      </div>
+    )
+  }
+
+  const handleManageRounds = (application) => {
+    console.log('📋 Opening interview rounds modal for application:', application)
+    console.log('📋 Application user data:', application.user)
+    console.log('📋 Candidate ID (user.id):', application.user?.id)
+    console.log('📋 Job ID:', application.jobId)
+    setSelectedApplication(application)
+    setShowInterviewModal(true)
+  }
+
+  const closeInterviewModal = () => {
+    setShowInterviewModal(false)
+    setSelectedApplication(null)
+  }
+
+  // Fetch interview rounds for an application
+  const fetchInterviewRounds = async (candidateId, jobId) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        console.log('No token found')
+        return null
+      }
+      
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/interview-rounds/application/candidate/${candidateId}/job/${jobId}`
+      console.log('Fetching interview rounds from:', url)
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      
+      console.log('Interview rounds response:', response.data)
+      return response.data
+    } catch (err) {
+      console.error('Error fetching interview rounds:', err.response?.status, err.response?.data, err.message)
+      return null
+    }
+  }
+
+  // Get enhanced status based on interview rounds
+  const getEnhancedStatus = (application, rounds) => {
+    if (!rounds || rounds.length === 0) {
+      return {
+        status: application.status,
+        label: application.status,
+        color: application.status === 'ACCEPTED' ? 'green' : 
+               application.status === 'REJECTED' ? 'red' : 'blue'
+      }
+    }
+
+    const lastRound = rounds[rounds.length - 1]
+    const totalRounds = rounds.length
+    const completedRounds = rounds.filter(r => r.status === 'ACCEPTED' || r.status === 'REJECTED').length
+    const acceptedRounds = rounds.filter(r => r.status === 'ACCEPTED').length
+    const rejectedRounds = rounds.filter(r => r.status === 'REJECTED').length
+
+    // If any round is rejected, overall status is rejected
+    if (rejectedRounds > 0) {
+      return {
+        status: 'REJECTED',
+        label: `Rejected after ${completedRounds} round${completedRounds > 1 ? 's' : ''}`,
+        color: 'red'
+      }
+    }
+
+    // If all rounds completed and accepted
+    if (completedRounds === totalRounds && acceptedRounds === totalRounds) {
+      return {
+        status: 'ACCEPTED',
+        label: `Accepted after ${totalRounds} round${totalRounds > 1 ? 's' : ''}`,
+        color: 'green'
+      }
+    }
+
+    // If there are ongoing rounds
+    if (lastRound.status === 'WAITING') {
+      return {
+        status: 'WAITING',
+        label: `Waiting for round ${totalRounds}`,
+        color: 'yellow'
+      }
+    }
+
+    if (lastRound.status === 'ONGOING') {
+      return {
+        status: 'ONGOING',
+        label: `Round ${totalRounds} ongoing`,
+        color: 'purple'
+      }
+    }
+
+    // Default to application status
+    return {
+      status: application.status,
+      label: application.status,
+      color: application.status === 'ACCEPTED' ? 'green' : 
+             application.status === 'REJECTED' ? 'red' : 'blue'
+    }
+  }
+
   // Update application status
   const updateApplicationStatus = async (applicationId, newStatus) => {
     try {
+      if (!applicationId) {
+        throw new Error('Application ID is required')
+      }
+      if (!newStatus) {
+        throw new Error('Status is required')
+      }
       setUpdateLoading(true)
       const token = localStorage.getItem('token')
       
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/status/${applicationId}?status=${newStatus}`
+      console.log('Sending status update request to:', url)
+      console.log('Application ID:', applicationId)
+      console.log('New Status:', newStatus)
+      
       await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/status/${applicationId}?status=${newStatus}`,
+        url,
         {},
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${token}`
           }
         }
       )
       
-      // Update local state
+      // Update local state - handle both PROCESS and PROCESS
+      const displayStatus = newStatus === 'PROCESS' ? 'PROCESS' : newStatus;
       setApplications(applications.map(app => 
-        app.id === applicationId ? { ...app, status: newStatus } : app
+        app.id === applicationId ? { ...app, status: displayStatus } : app
       ))
       
       setMessage({ 
         type: 'success', 
-        text: `Application ${newStatus === 'ACCEPTED' ? 'accepted' : 'rejected'} successfully!` 
+        text: `Application ${newStatus === 'ACCEPTED' ? 'accepted' : newStatus === 'REJECTED' ? 'rejected' : 'moved to process'} successfully!` 
       })
       
       // Clear message after 3 seconds
       setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     } catch (err) {
       console.error('Error updating application status:', err)
+      const errorMessage = err.response?.data?.message || err.response?.data || 'Failed to update application status. Please try again.'
       setMessage({ 
         type: 'error', 
-        text: 'Failed to update application status. Please try again.' 
+        text: `Error: ${errorMessage}` 
       })
     } finally {
       setUpdateLoading(false)
@@ -120,7 +335,13 @@ function page() {
 
   // Filter applications by status and search term
   const filteredApplications = applications.filter(app => {
-    const matchesStatus = statusFilter === 'ALL' || app.status === statusFilter
+    // Handle both PROCESS and PROCESS for backward compatibility
+    let appStatus = app.status;
+    if (appStatus === 'PROCESS' && statusFilter === 'PROCESS') {
+      appStatus = 'PROCESS';
+    }
+    
+    const matchesStatus = statusFilter === 'ALL' || appStatus === statusFilter
     const matchesSearch = searchTerm === '' || 
       (app.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
        app.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,6 +488,7 @@ function page() {
             >
               <option value="ALL">All Applications</option>
               <option value="APPLIED">Applied</option>
+              <option value="PROCESS">In Process</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="REJECTED">Rejected</option>
             </select>
@@ -312,16 +534,7 @@ function page() {
                     </div>
                     
                     <div className="mt-4 md:mt-0 flex items-center">
-                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        application.status === 'APPLIED' ? 'bg-blue-100 text-blue-800' :
-                        application.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {application.status === 'APPLIED' && <Clock className="w-4 h-4 inline mr-1" />}
-                        {application.status === 'ACCEPTED' && <CheckCircle className="w-4 h-4 inline mr-1" />}
-                        {application.status === 'REJECTED' && <XCircle className="w-4 h-4 inline mr-1" />}
-                        {application.status}
-                      </div>
+                      <EnhancedApplicationStatus application={application} />
                     </div>
                   </div>
                   
@@ -347,46 +560,34 @@ function page() {
                     </Link>
                     
                     <div className="flex space-x-3">
-                      {application.status === 'APPLIED' && (
-                        <>
-                          <button
-                            onClick={() => updateApplicationStatus(application.id, 'REJECTED')}
-                            disabled={updateLoading}
-                            className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
-                          >
-                            <XCircle className="w-4 h-4 inline mr-1" />
-                            Reject
-                          </button>
-                          <button
-                            onClick={() => updateApplicationStatus(application.id, 'ACCEPTED')}
-                            disabled={updateLoading}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <CheckCircle className="w-4 h-4 inline mr-1" />
-                            Accept
-                          </button>
-                        </>
-                      )}
-                      {application.status === 'ACCEPTED' && (
-                        <button
-                          onClick={() => updateApplicationStatus(application.id, 'REJECTED')}
+                      <button
+                        onClick={() => handleManageRounds(application)}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center"
+                      >
+                        <Calendar className="w-4 h-4 inline mr-1" />
+                        Manage Interview Rounds
+                      </button>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Status:</span>
+                        <select
+                          value={application.status}
+                          onChange={(e) => {
+                            if (e.target.value !== application.status) {
+                              // Use shorter value for backend compatibility
+                              const backendValue = e.target.value === 'PROCESS' ? 'PROCESS' : e.target.value;
+                              updateApplicationStatus(application.id, backendValue)
+                            }
+                          }}
                           disabled={updateLoading}
-                          className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                          <XCircle className="w-4 h-4 inline mr-1" />
-                          Reject Instead
-                        </button>
-                      )}
-                      {application.status === 'REJECTED' && (
-                        <button
-                          onClick={() => updateApplicationStatus(application.id, 'ACCEPTED')}
-                          disabled={updateLoading}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <CheckCircle className="w-4 h-4 inline mr-1" />
-                          Accept Instead
-                        </button>
-                      )}
+                          <option value="APPLIED">Applied</option>
+                          <option value="PROCESS">In Process</option>
+                          <option value="ACCEPTED">Accepted</option>
+                          <option value="REJECTED">Rejected</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -395,6 +596,17 @@ function page() {
           </div>
         )}
       </div>
+    
+    {showInterviewModal && selectedApplication && (
+      <InterviewRoundsModal
+        isOpen={showInterviewModal}
+        onClose={closeInterviewModal}
+        jobId={selectedApplication.jobId}
+        candidateId={selectedApplication.user?.id}
+        candidateName={`${selectedApplication.user?.firstName} ${selectedApplication.user?.lastName}`}
+        jobTitle={selectedApplication.jobTitle}
+      />
+    )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from 'axios'
 import RecruiterNavbar from '../RecruiterComponents/RecruiterNavbar'
+import InterviewRoundsModal from '../RecruiterComponents/InterviewRoundsModal'
 import { 
   Briefcase, 
   Users, 
@@ -62,6 +63,7 @@ export default function Dashboard() {
     totalJobs: 0,
     totalApplications: 0,
     pendingApplications: 0,
+    inProcessApplications: 0,
     acceptedApplications: 0,
     rejectedApplications: 0,
     recentApplications: 0,
@@ -69,6 +71,8 @@ export default function Dashboard() {
     avgApplicationsPerJob: 0,
     topPerformingJob: null
   })
+  const [showInterviewModal, setShowInterviewModal] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -136,12 +140,25 @@ export default function Dashboard() {
       for (const job of jobsData) {
         try {
           console.log(`Fetching applications for job ${job.jobId}`)
-          const applicationsResponse = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${job.jobId}`,
-            {
-              headers: { Authorization: `Bearer ${token}` }
-            }
-          )
+          let applicationsResponse;
+          try {
+            // Try enhanced endpoint first
+            applicationsResponse = await axios.get(
+              `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${job.jobId}/enhanced`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            )
+          } catch (enhancedError) {
+            console.warn(`Enhanced endpoint failed for job ${job.jobId}, falling back to basic:`, enhancedError.message)
+            // Fallback to basic endpoint
+            applicationsResponse = await axios.get(
+              `${process.env.NEXT_PUBLIC_API_URL}/jobApplications/job/${job.jobId}`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            )
+          }
           console.log(`Found ${applicationsResponse.data.length} applications for job ${job.jobId}`)
           allApplications.push(...applicationsResponse.data.map(app => ({ ...app, jobTitle: job.jobTitle || 'Untitled Job' })))
         } catch (err) {
@@ -151,10 +168,11 @@ export default function Dashboard() {
       console.log('Total applications:', allApplications.length)
       setApplications(allApplications)
 
-      // Calculate detailed stats
-      const pendingApps = allApplications.filter(app => app.status === 'APPLIED').length
-      const acceptedApps = allApplications.filter(app => app.status === 'ACCEPTED').length
-      const rejectedApps = allApplications.filter(app => app.status === 'REJECTED').length
+      // Calculate detailed stats with enhanced status from interview rounds
+      const pendingApps = allApplications.filter(app => app?.status === 'APPLIED').length
+      const inProcessApps = allApplications.filter(app => app?.status === 'PROCESS').length
+      const acceptedApps = allApplications.filter(app => app?.status === 'ACCEPTED').length
+      const rejectedApps = allApplications.filter(app => app?.status === 'REJECTED').length
       const recentApps = allApplications.filter(app => {
         const appDate = new Date(app.appliedAt)
         const weekAgo = new Date()
@@ -187,6 +205,7 @@ export default function Dashboard() {
         totalJobs: jobsData.length,
         totalApplications: allApplications.length,
         pendingApplications: pendingApps,
+        inProcessApplications: inProcessApps,
         acceptedApplications: acceptedApps,
         rejectedApplications: rejectedApps,
         recentApplications: recentApps,
@@ -221,9 +240,196 @@ export default function Dashboard() {
     })
   }
 
+  // Enhanced Application Card Component
+  const EnhancedApplicationCard = ({ application, onManageRounds, formatDate }) => {
+    const [enhancedStatus, setEnhancedStatus] = useState({
+      status: application.status,
+      label: application.status,
+      color: 'blue'
+    })
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+      const fetchRounds = async () => {
+        try {
+          setLoading(true)
+          const rounds = await fetchInterviewRounds(application.user?.id, application.jobId)
+          const enhanced = getEnhancedStatus(application, rounds?.rounds || [])
+          setEnhancedStatus(enhanced)
+        } catch (err) {
+          console.error('Error fetching interview rounds for status:', err)
+          // Fallback to basic status
+          setEnhancedStatus({
+            status: application.status,
+            label: application.status,
+            color: application.status === 'ACCEPTED' ? 'green' : 
+                   application.status === 'REJECTED' ? 'red' : 'blue'
+          })
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchRounds()
+    }, [application])
+
+    if (loading) {
+      return (
+        <div className="border border-gray-200 rounded-lg p-4 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+              <div>
+                <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+              </div>
+            </div>
+            <div className="h-6 bg-gray-200 rounded w-20"></div>
+          </div>
+        </div>
+      )
+    }
+
+    const StatusIcon = getStatusIcon(enhancedStatus.status)
+
+    return (
+      <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+              {application.user?.firstName?.[0] || 'U'}
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">
+                {application.user?.firstName} {application.user?.lastName}
+              </h3>
+              <p className="text-sm text-gray-600">{application.jobTitle}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(enhancedStatus.status)}`}>
+              <StatusIcon className="w-3 h-3 inline mr-1" />
+              {enhancedStatus.label}
+            </span>
+            <button
+              onClick={() => onManageRounds(application)}
+              className="text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-50"
+              title="Manage Interview Rounds"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+            <Link
+              href={`/recruiter/applications/${application.jobId}`}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              <Eye className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+        <div className="mt-2 text-sm text-gray-500">
+          Applied on {formatDate(application.appliedAt)}
+        </div>
+      </div>
+    )
+  }
+
+  const handleManageRounds = (application) => {
+    setSelectedApplication(application)
+    setShowInterviewModal(true)
+  }
+
+  // Fetch interview rounds for enhanced status
+  const fetchInterviewRounds = async (candidateId, jobId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/interview-rounds/application/candidate/${candidateId}/job/${jobId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      return response.data
+    } catch (err) {
+      console.error('Error fetching interview rounds:', err)
+      return null
+    }
+  }
+
+  // Get enhanced status based on interview rounds
+  const getEnhancedStatus = (application, rounds) => {
+    if (!rounds || rounds.length === 0) {
+      return {
+        status: application.status,
+        label: application.status,
+        color: application.status === 'ACCEPTED' ? 'green' : 
+               application.status === 'REJECTED' ? 'red' : 'blue'
+      }
+    }
+
+    const lastRound = rounds[rounds.length - 1]
+    const totalRounds = rounds.length
+    const completedRounds = rounds.filter(r => r.status === 'ACCEPTED' || r.status === 'REJECTED').length
+    const acceptedRounds = rounds.filter(r => r.status === 'ACCEPTED').length
+    const rejectedRounds = rounds.filter(r => r.status === 'REJECTED').length
+
+    // If any round is rejected, overall status is rejected
+    if (rejectedRounds > 0) {
+      return {
+        status: 'REJECTED',
+        label: `Rejected (${completedRounds}/${totalRounds})`,
+        color: 'red'
+      }
+    }
+
+    // If all rounds completed and accepted
+    if (completedRounds === totalRounds && acceptedRounds === totalRounds) {
+      return {
+        status: 'ACCEPTED',
+        label: `Accepted (${totalRounds})`,
+        color: 'green'
+      }
+    }
+
+    // If there are ongoing rounds
+    if (lastRound.status === 'WAITING') {
+      return {
+        status: 'PROCESS',
+        label: `Waiting (${totalRounds})`,
+        color: 'yellow'
+      }
+    }
+
+    if (lastRound.status === 'ONGOING') {
+      return {
+        status: 'PROCESS',
+        label: `Round ${totalRounds} ongoing`,
+        color: 'purple'
+      }
+    }
+
+    // Default to application status
+    return {
+      status: application.status,
+      label: application.status,
+      color: application.status === 'ACCEPTED' ? 'green' : 
+             application.status === 'REJECTED' ? 'red' : 
+             application.status === 'PROCESS' ? 'yellow' : 'blue'
+    }
+  }
+
+  const closeInterviewModal = () => {
+    setShowInterviewModal(false)
+    setSelectedApplication(null)
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'APPLIED': return 'bg-blue-100 text-blue-800'
+      case 'PROCESS': return 'bg-yellow-100 text-yellow-800'
+      case 'WAITING': return 'bg-yellow-100 text-yellow-800'
+      case 'ONGOING': return 'bg-purple-100 text-purple-800'
       case 'ACCEPTED': return 'bg-green-100 text-green-800'
       case 'REJECTED': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
@@ -233,15 +439,19 @@ export default function Dashboard() {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'APPLIED': return Clock
+      case 'PROCESS': return RefreshCw
+      case 'WAITING': return Clock
+      case 'ONGOING': return RefreshCw
       case 'ACCEPTED': return CheckCircle
       case 'REJECTED': return XCircle
       default: return Clock
     }
   }
 
-  // Chart data
+  // Chart data with enhanced status from interview rounds
   const applicationStatusData = [
     { name: 'Applied', value: stats.pendingApplications, color: '#3B82F6' },
+    { name: 'In Process', value: stats.inProcessApplications, color: '#F59E0B' },
     { name: 'Accepted', value: stats.acceptedApplications, color: '#10B981' },
     { name: 'Rejected', value: stats.rejectedApplications, color: '#EF4444' }
   ]
@@ -342,7 +552,7 @@ export default function Dashboard() {
         </div>
 
         {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg border border-blue-200 p-6 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -352,6 +562,25 @@ export default function Dashboard() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-blue-700">Total Jobs</p>
                   <p className="text-3xl font-bold text-blue-900">{stats.totalJobs}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-600 font-medium">
+                  {stats.totalApplications} applications
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl shadow-lg border border-yellow-200 p-6 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-3 bg-yellow-500 rounded-lg shadow-md">
+                  <RefreshCw className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-yellow-700">In Process</p>
+                  <p className="text-3xl font-bold text-yellow-900">{stats.inProcessApplications}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -417,13 +646,13 @@ export default function Dashboard() {
                   <p className="text-3xl font-bold text-purple-900">{stats.conversionRate}%</p>
                 </div>
               </div>
-              <div className="text-right">
+              {/* <div className="text-right">
                 <div className="flex items-center text-purple-600 text-sm">
                   <Award className="w-4 h-4 mr-1" />
                   <span className="font-medium">Success</span>
                 </div>
                 <p className="text-xs text-purple-600">Acceptance rate</p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -657,41 +886,14 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {applications.slice(0, 5).map((application) => {
-                    const StatusIcon = getStatusIcon(application.status)
-                    return (
-                      <div key={application.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                              {application.user?.firstName?.[0] || 'U'}
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-gray-900">
-                                {application.user?.firstName} {application.user?.lastName}
-                              </h3>
-                              <p className="text-sm text-gray-600">{application.jobTitle}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
-                              <StatusIcon className="w-3 h-3 inline mr-1" />
-                              {application.status}
-                            </span>
-                            <Link
-                              href={`/recruiter/applications/${application.jobId}`}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-500">
-                          Applied on {formatDate(application.appliedAt)}
-                        </div>
-                      </div>
-                    )
-                  })}
+                  {applications.slice(0, 5).map((application) => (
+                    <EnhancedApplicationCard 
+                      key={application.id} 
+                      application={application} 
+                      onManageRounds={handleManageRounds}
+                      formatDate={formatDate}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -765,6 +967,18 @@ export default function Dashboard() {
                     <span className="font-bold text-gray-900">{stats.rejectedApplications}</span>
                     <p className="text-xs text-gray-500">
                       {stats.totalApplications > 0 ? Math.round((stats.rejectedApplications / stats.totalApplications) * 100) : 0}%
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+                    <span className="text-sm font-medium text-gray-700">In Process</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-gray-900">{stats.inProcessApplications}</span>
+                    <p className="text-xs text-gray-500">
+                      {stats.totalApplications > 0 ? Math.round((stats.inProcessApplications / stats.totalApplications) * 100) : 0}%
                     </p>
                   </div>
                 </div>
@@ -893,6 +1107,14 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Interview Rounds Modal */}
+      {showInterviewModal && selectedApplication && (
+        <InterviewRoundsModal
+          application={selectedApplication}
+          onClose={closeInterviewModal}
+        />
+      )}
     </div>
   )
 }

@@ -96,7 +96,7 @@ public class Job {
         this.jobId = jobId;
     }
 
-    public String getJob_title() {
+    public String getJobTitle() {
         return jobTitle;
     }
 

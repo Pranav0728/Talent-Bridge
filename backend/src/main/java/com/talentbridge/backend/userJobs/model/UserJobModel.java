@@ -25,7 +25,8 @@ public class UserJobModel {
 
     // Status of application
     @Enumerated(EnumType.STRING)
-    private ApplicationStatus status; // APPLIED, ACCEPTED, REJECTED
+    @Column(length = 20) // Increase column length to handle PROCESS
+    private ApplicationStatus status; // APPLIED, PROCESS, ACCEPTED, REJECTED
 
     private LocalDateTime appliedAt;
     private LocalDateTime updatedAt;
@@ -48,7 +49,25 @@ public class UserJobModel {
     public Long getJobId() { return jobId; }
     public void setJobId(Long jobId) { this.jobId = jobId; }
     public ApplicationStatus getStatus() { return status; }
-    public void setStatus(ApplicationStatus status) { this.status = status; }
+    public void setStatus(ApplicationStatus status) { 
+        this.status = status; 
+    }
+    
+    // Helper method for database compatibility
+    public void setStatusString(String statusStr) {
+        if ("PROCESS".equals(statusStr)) {
+            this.status = ApplicationStatus.PROCESS;
+        } else {
+            this.status = ApplicationStatus.valueOf(statusStr);
+        }
+    }
     public LocalDateTime getAppliedAt() { return appliedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    // Transient field for interview rounds count
+    @Transient
+    private int interviewRoundsCount;
+
+    public int getInterviewRoundsCount() { return interviewRoundsCount; }
+    public void setInterviewRoundsCount(int interviewRoundsCount) { this.interviewRoundsCount = interviewRoundsCount; }
 }
