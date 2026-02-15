@@ -97,88 +97,7 @@ function page() {
     }
   }, [jobId])
 
-  // Enhanced Application Status Component
-  const EnhancedApplicationStatus = ({ application }) => {
-    // Handle PROCESS conversion for display
-    const displayStatus = application.status === 'PROCESS' ? 'PROCESS' : application.status;
-    
-    const [enhancedStatus, setEnhancedStatus] = useState({
-      status: displayStatus,
-      label: displayStatus,
-      color: 'blue'
-    })
-    const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-      const fetchRounds = async () => {
-        try {
-          setLoading(true)
-          const rounds = await fetchInterviewRounds(application.user?.id, application.jobId)
-          const enhanced = getEnhancedStatus(application, rounds?.rounds || [])
-          setEnhancedStatus(enhanced)
-        } catch (err) {
-          console.error('Error fetching interview rounds for status:', err)
-          // Fallback to basic status with PROCESS conversion
-          const fallbackStatus = application.status === 'PROCESS' ? 'PROCESS' : application.status;
-          setEnhancedStatus({
-            status: fallbackStatus,
-            label: fallbackStatus,
-            color: fallbackStatus === 'ACCEPTED' ? 'green' : 
-                   fallbackStatus === 'REJECTED' ? 'red' : 'blue'
-          })
-        } finally {
-          setLoading(false)
-        }
-      }
-
-      fetchRounds()
-    }, [application])
-
-    if (loading) {
-      return (
-        <div className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 animate-pulse">
-          Loading...
-        </div>
-      )
-    }
-
-    const getStatusIcon = () => {
-      switch (enhancedStatus.status) {
-        case 'WAITING':
-          return <Clock className="w-4 h-4 inline mr-1" />
-        case 'ONGOING':
-          return <RefreshCw className="w-4 h-4 inline mr-1" />
-        case 'ACCEPTED':
-          return <CheckCircle className="w-4 h-4 inline mr-1" />
-        case 'REJECTED':
-          return <XCircle className="w-4 h-4 inline mr-1" />
-        default:
-          return <Clock className="w-4 h-4 inline mr-1" />
-      }
-    }
-
-    const getStatusColor = () => {
-      switch (enhancedStatus.color) {
-        case 'yellow':
-          return 'bg-yellow-100 text-yellow-800'
-        case 'purple':
-          return 'bg-purple-100 text-purple-800'
-        case 'green':
-          return 'bg-green-100 text-green-800'
-        case 'red':
-          return 'bg-red-100 text-red-800'
-        default:
-          return 'bg-blue-100 text-blue-800'
-      }
-    }
-
-    return (
-      <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}>
-        {getStatusIcon()}
-        {enhancedStatus.label}
-      </div>
-    )
-  }
 
   const handleManageRounds = (application) => {
     console.log('📋 Opening interview rounds modal for application:', application)
@@ -350,22 +269,141 @@ function page() {
     return matchesStatus && matchesSearch
   })
 
-  // Format date
+  // Enhanced date formatting with relative time
   const formatDate = (dateString) => {
     if (!dateString) return '—'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = Math.abs(now - date)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) {
+      return 'Today'
+    } else if (diffDays === 1) {
+      return 'Yesterday'
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`
+    } else {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    }
   }
+
+  // Enhanced Application Status Component
+  const EnhancedApplicationStatus = ({ application }) => {
+    const getStatusConfig = (status) => {
+      switch (status) {
+        case 'APPLIED':
+          return {
+            bgColor: 'bg-gradient-to-r from-blue-50 to-indigo-50',
+            borderColor: 'border-blue-200',
+            textColor: 'text-blue-700',
+            icon: '📝',
+            label: 'Applied'
+          }
+        case 'PROCESS':
+          return {
+            bgColor: 'bg-gradient-to-r from-amber-50 to-yellow-50',
+            borderColor: 'border-amber-200',
+            textColor: 'text-amber-700',
+            icon: '⚡',
+            label: 'In Process'
+          }
+        case 'ACCEPTED':
+          return {
+            bgColor: 'bg-gradient-to-r from-green-50 to-emerald-50',
+            borderColor: 'border-green-200',
+            textColor: 'text-green-700',
+            icon: '✅',
+            label: 'Accepted'
+          }
+        case 'REJECTED':
+          return {
+            bgColor: 'bg-gradient-to-r from-red-50 to-rose-50',
+            borderColor: 'border-red-200',
+            textColor: 'text-red-700',
+            icon: '❌',
+            label: 'Rejected'
+          }
+        default:
+          return {
+            bgColor: 'bg-gray-50',
+            borderColor: 'border-gray-200',
+            textColor: 'text-gray-700',
+            icon: '📋',
+            label: status
+          }
+      }
+    }
+
+    const config = getStatusConfig(application.status)
+    
+    return (
+      <div className={`px-4 py-2 rounded-2xl border-2 ${config.bgColor} ${config.borderColor} ${config.textColor} font-semibold flex items-center space-x-2 shadow-lg`}>
+        <span className="text-lg">{config.icon}</span>
+        <span>{config.label}</span>
+      </div>
+    )
+  }
+
+  // Add custom animations
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      .animate-fadeInUp {
+        animation: fadeInUp 0.6s ease-out forwards;
+      }
+      .float-animation {
+        animation: float 6s ease-in-out infinite;
+      }
+      .shimmer-bg {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 3s infinite;
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <RecruiterNavbar />
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="relative inline-block">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+              <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-transparent bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-padding">
+                <div className="absolute inset-1 bg-white rounded-full"></div>
+              </div>
+            </div>
+            <p className="mt-6 text-lg font-medium text-gray-700">Loading applications...</p>
+            <p className="text-sm text-gray-500">Preparing your dashboard</p>
+          </div>
         </div>
       </div>
     )
@@ -373,17 +411,27 @@ function page() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <RecruiterNavbar />
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex items-start">
-            <AlertCircle className="w-6 h-6 text-red-600 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-lg font-medium text-red-800">Error Loading Applications</h3>
-              <p className="mt-1 text-red-700">{error}</p>
+        <div className="max-w-4xl mx-auto px-4 py-16">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 p-12 text-center">
+            <div className="relative inline-block mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-xl opacity-30 animate-pulse"></div>
+              <AlertCircle className="relative w-16 h-16 text-red-500 mx-auto" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">{error}</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center justify-center"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </button>
               <button 
                 onClick={() => router.back()}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center justify-center"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Back to Jobs
@@ -396,101 +444,117 @@ function page() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <RecruiterNavbar />
       
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 animate-fadeInUp">
+        {/* Page Header */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl float-animation"></div>
+          <div className="absolute top-3/4 right-1/4 w-48 h-48 bg-gradient-to-r from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl float-animation" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl float-animation" style={{ animationDelay: '4s' }}></div>
+        </div>
         {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center mb-2">
+        <div className="relative mb-12">
+          <div className="flex items-center mb-4">
             <button 
               onClick={() => router.back()}
-              className="mr-3 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="group mr-4 p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-5 h-5 text-gray-700 group-hover:text-indigo-600 transition-colors" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Applications for {job?.jobTitle || 'Job'}
-            </h1>
-          </div>
-          <p className="text-gray-600 ml-10">
-            Review and manage applications for this position
-          </p>
-        </div>
-
-        {/* Job Summary Card */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{job?.jobTitle}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <div className="flex items-center text-gray-600">
-                  <Briefcase className="w-4 h-4 mr-1 text-blue-500" />
-                  <span className="text-sm">{job?.job_type || 'Not specified'}</span>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                Applications
+              </h1>
+              <p className="text-lg text-gray-600">
+                Review and manage applications for <span className="font-semibold text-gray-800">{job?.jobTitle || 'this position'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Job Summary Card with Glassmorphism */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 p-8 mb-8 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <div className="flex flex-col md:flex-row md:items-center justify-between">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">{job?.jobTitle}</h2>
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center text-gray-600 bg-white/50 px-4 py-2 rounded-lg">
+                  <Briefcase className="w-5 h-5 mr-2 text-indigo-500" />
+                  <span className="text-sm font-medium">{job?.job_type || 'Not specified'}</span>
                 </div>
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="w-4 h-4 mr-1 text-red-500" />
-                  <span className="text-sm">{job?.location || 'Not specified'}</span>
+                <div className="flex items-center text-gray-600 bg-white/50 px-4 py-2 rounded-lg">
+                  <MapPin className="w-5 h-5 mr-2 text-rose-500" />
+                  <span className="text-sm font-medium">{job?.location || 'Not specified'}</span>
                 </div>
-                <div className="flex items-center text-gray-600">
-                  <Calendar className="w-4 h-4 mr-1 text-green-500" />
-                  <span className="text-sm">Posted on {formatDate(job?.created_at)}</span>
+                <div className="flex items-center text-gray-600 bg-white/50 px-4 py-2 rounded-lg">
+                  <Calendar className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm font-medium">Posted {formatDate(job?.created_at)}</span>
                 </div>
               </div>
             </div>
-            <div className="mt-4 md:mt-0">
-              <div className="flex items-center bg-blue-50 px-4 py-2 rounded-lg">
-                <FileText className="w-5 h-5 text-blue-600 mr-2" />
-                <div>
-                  <div className="text-sm font-medium text-blue-900">Total Applications</div>
-                  <div className="text-2xl font-bold text-blue-700">{applications.length}</div>
+            <div className="mt-6 md:mt-0 md:ml-8">
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-6 py-4 rounded-2xl border border-blue-100">
+                <div className="flex items-center">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl mr-4">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-blue-900">Total Applications</div>
+                    <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{applications.length}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Message Display */}
+        {/* Message Display with Enhanced Design */}
         {message.text && (
-          <div className={`mb-6 p-4 rounded-lg flex items-center ${
-            message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+          <div className={`mb-8 p-6 rounded-2xl flex items-center backdrop-blur-sm border ${
+            message.type === 'success' 
+              ? 'bg-green-50/80 text-green-800 border-green-200 shadow-lg shadow-green-100' 
+              : 'bg-red-50/80 text-red-800 border-red-200 shadow-lg shadow-red-100'
           }`}>
             {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 mr-2" />
+              <CheckCircle className="w-6 h-6 mr-3" />
             ) : (
-              <AlertCircle className="w-5 h-5 mr-2" />
+              <AlertCircle className="w-6 h-6 mr-3" />
             )}
-            {message.text}
+            <span className="font-medium">{message.text}</span>
           </div>
         )}
 
-        {/* Filters and Search */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        {/* Filters and Search with Glassmorphism */}
+        <div className="flex flex-col md:flex-row gap-6 mb-8">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Search applicants..."
+              className="block w-full pl-12 pr-4 py-3 bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-300"
+              placeholder="Search applicants by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-500" />
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
+              <Filter className="h-5 w-5 text-gray-500" />
+            </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-4 pr-10 py-3 bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              <option value="ALL">All Applications</option>
-              <option value="APPLIED">Applied</option>
-              <option value="PROCESS">In Process</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="REJECTED">Rejected</option>
+              <option value="ALL">📋 All Applications</option>
+              <option value="APPLIED">📝 Applied</option>
+              <option value="PROCESS">⚡ In Process</option>
+              <option value="ACCEPTED">✅ Accepted</option>
+              <option value="REJECTED">❌ Rejected</option>
             </select>
           </div>
         </div>
@@ -524,11 +588,12 @@ function page() {
                         {application.user?.firstName?.[0] || 'U'}
                       </div>
                       <div className="ml-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                           {application.user?.firstName} {application.user?.lastName}
                         </h3>
-                        <p className="text-gray-600 text-sm">
-                          Applied on {formatDate(application.appliedDate)}
+                        <p className="text-gray-600 text-sm flex items-center">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Applied {formatDate(application.appliedDate)}
                         </p>
                       </div>
                     </div>
@@ -539,53 +604,56 @@ function page() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="flex items-center text-gray-700">
-                      <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{application.user?.email || '—'}</span>
+                    <div className="flex items-center text-gray-700 bg-white/50 px-4 py-3 rounded-xl">
+                      <Mail className="w-5 h-5 text-indigo-500 mr-3" />
+                      <span className="font-medium">{application.user?.email || '—'}</span>
                     </div>
-                    <div className="flex items-center text-gray-700">
-                      <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{application.user?.phone || '—'}</span>
+                    <div className="flex items-center text-gray-700 bg-white/50 px-4 py-3 rounded-xl">
+                      <Phone className="w-5 h-5 text-emerald-500 mr-3" />
+                      <span className="font-medium">{application.user?.phone || '—'}</span>
                     </div>
                   </div>
                   
-                  <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row items-center justify-between">
+                  <div className="border-t border-gray-100 pt-6 flex flex-col sm:flex-row items-center justify-between">
                     <Link 
                       href={`/recruiter/applicants/${application.user?.id}`}
-                      className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-3 sm:mb-0"
+                      className="group inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-4 sm:mb-0 transition-all duration-200"
                     >
-                      <User className="w-4 h-4 mr-1" />
-                      View Full Profile
-                      <ExternalLink className="w-3 h-3 ml-1" />
+                      <div className="p-2 bg-indigo-50 rounded-lg mr-3 group-hover:bg-indigo-100 transition-colors">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <span className="font-semibold">View Full Profile</span>
+                      <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Link>
                     
-                    <div className="flex space-x-3">
+                    <div className="flex space-x-4">
                       <button
                         onClick={() => handleManageRounds(application)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center"
+                        className="group px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center"
                       >
-                        <Calendar className="w-4 h-4 inline mr-1" />
-                        Manage Interview Rounds
+                        <div className="p-1 bg-white/20 rounded-lg mr-3">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <span className="font-semibold">Manage Rounds</span>
                       </button>
                       
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">Status:</span>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-semibold text-gray-700">Status:</span>
                         <select
                           value={application.status}
                           onChange={(e) => {
                             if (e.target.value !== application.status) {
-                              // Use shorter value for backend compatibility
                               const backendValue = e.target.value === 'PROCESS' ? 'PROCESS' : e.target.value;
                               updateApplicationStatus(application.id, backendValue)
                             }
                           }}
                           disabled={updateLoading}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-4 py-2 bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
                         >
-                          <option value="APPLIED">Applied</option>
-                          <option value="PROCESS">In Process</option>
-                          <option value="ACCEPTED">Accepted</option>
-                          <option value="REJECTED">Rejected</option>
+                          <option value="APPLIED">📝 Applied</option>
+                          <option value="PROCESS">⚡ In Process</option>
+                          <option value="ACCEPTED">✅ Accepted</option>
+                          <option value="REJECTED">❌ Rejected</option>
                         </select>
                       </div>
                     </div>
