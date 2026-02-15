@@ -26,8 +26,10 @@ public class GroqCloudService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String generateSkillGuidance(String skill, int currentMatchScore) {
+        System.out.println("GroqCloudService: Generating skill guidance for: " + skill + " with score: " + currentMatchScore);
         try {
             String prompt = buildSkillGuidancePrompt(skill, currentMatchScore);
+            System.out.println("GroqCloudService: Built prompt: " + prompt.substring(0, 100) + "...");
             
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", MODEL);
@@ -52,8 +54,13 @@ public class GroqCloudService {
                 String.class
             );
 
+            System.out.println("GroqCloudService: API response status: " + response.getStatusCode());
+            System.out.println("GroqCloudService: API response body: " + response.getBody());
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return extractContentFromResponse(response.getBody());
+                String content = extractContentFromResponse(response.getBody());
+                System.out.println("GroqCloudService: Extracted content: " + content);
+                return content;
             } else {
                 throw new RuntimeException("Failed to get response from GroqCloud API");
             }

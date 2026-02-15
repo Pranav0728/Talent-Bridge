@@ -233,6 +233,9 @@ export default function InterviewRoundsModal({
         candidateId: parseInt(candidateId)
       }
 
+      console.log('Updating interview round with payload:', payload);
+      console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/interview-rounds/${editingRound.id}/recruiter/${recruiterId}`);
+      
       await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/api/interview-rounds/${editingRound.id}/recruiter/${recruiterId}`,
         payload,
@@ -248,9 +251,23 @@ export default function InterviewRoundsModal({
       fetchRounds()
       alert('✅ Interview round updated successfully!')
     } catch (err) {
-      console.error('Error updating interview round:', err)
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update interview round'
-      alert(`❌ Failed to update interview round: ${errorMessage}`)
+      console.error('Error updating round:', err)
+      console.error('Error response:', err.response)
+      console.error('Error status:', err.response?.status)
+      console.error('Error data:', err.response?.data)
+      
+      let errorMessage = '❌ Failed to update interview round. '
+      if (err.response?.status === 400) {
+        errorMessage += 'Invalid data provided. Please check all fields.'
+      } else if (err.response?.status === 404) {
+        errorMessage += 'Interview round not found.'
+      } else if (err.response?.status === 403) {
+        errorMessage += 'You don\'t have permission to update this round.'
+      } else {
+        errorMessage += 'Please try again.'
+      }
+      
+      alert(errorMessage)
       throw new Error(`Failed to update interview round: ${errorMessage}`)
     } finally {
       setLoading(false)
@@ -346,9 +363,9 @@ export default function InterviewRoundsModal({
             <h2 className="text-2xl font-bold text-gray-900">
               Manage Interview Rounds
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            {/* <p className="text-sm text-gray-600 mt-1">
               {jobTitle} • {candidateName}
-            </p>
+            </p> */}
 
             {isRejected && (
               <div className="mt-2 flex items-center text-red-600">

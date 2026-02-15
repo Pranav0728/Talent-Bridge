@@ -225,6 +225,60 @@ public class InterviewRoundService {
                 .collect(Collectors.toList());
     }
 
+    // Update interview round details
+    public InterviewRoundResponseDTO updateInterviewRound(Long roundId, Long recruiterId, InterviewRoundRequestDTO requestDTO) {
+        System.out.println("InterviewRoundService: Updating round " + roundId + " for recruiter " + recruiterId);
+        System.out.println("Request data: " + requestDTO);
+        
+        InterviewRound round = interviewRoundRepository.findById(roundId)
+                .orElseThrow(() -> new RuntimeException("Interview round not found with ID: " + roundId));
+
+        // Verify that the recruiter owns this round
+        if (!round.getRecruiterId().equals(recruiterId)) {
+            throw new RuntimeException("You don't have permission to update this round");
+        }
+
+        // Validate that the job exists and belongs to the recruiter
+        Job job = jobRepository.findById(requestDTO.getJobId())
+                .orElseThrow(() -> new RuntimeException("Job not found with ID: " + requestDTO.getJobId()));
+
+        if (!job.getRecruiter().getRecruiterId().equals(recruiterId)) {
+            throw new RuntimeException("Job does not belong to this recruiter");
+        }
+
+        // Update the round details
+        round.setRoundName(requestDTO.getRoundName());
+        round.setRoundType(requestDTO.getRoundType());
+        round.setDescription(requestDTO.getDescription());
+        round.setScheduledAt(requestDTO.getScheduledAt());
+        round.setMode(requestDTO.getMode());
+        round.setLocationOrLink(requestDTO.getLocationOrLink());
+        round.setJobId(requestDTO.getJobId());
+        round.setCandidateId(requestDTO.getCandidateId());
+
+        InterviewRound updatedRound = interviewRoundRepository.save(round);
+
+        // Send email notification
+        try {
+            UserProfileModel candidateProfile = userProfileService.getProfileByUserId(requestDTO.getCandidateId());
+            String scheduledDate = requestDTO.getScheduledAt().format(dateFormatter);
+            
+            emailService.sendInterviewRoundUpdateEmail(
+                    candidateProfile.getEmail(),
+                    candidateProfile.getFirstName() + " " + candidateProfile.getLastName(),
+                    job.getJobTitle(),
+                    requestDTO.getRoundName(),
+                    scheduledDate,
+                    requestDTO.getMode().toString(),
+                    requestDTO.getLocationOrLink()
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send email notification: " + e.getMessage());
+        }
+
+        return convertToResponseDTO(updatedRound);
+    }
+
     // Helper method to convert entity to DTO
     private InterviewRoundResponseDTO convertToResponseDTO(InterviewRound round) {
         InterviewRoundResponseDTO dto = new InterviewRoundResponseDTO(

@@ -58,7 +58,7 @@ public class Job {
             "SQL", "MySQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "Kubernetes", "Git",
             "HTML", "CSS", "TypeScript", "Angular", "Vue", "Django", "Flask",
             "C++", "C#", ".NET", "Rest API", "GraphQL", "Redis", "Linux",
-            "Machine Learning", "AI", "Data Science", "DevOps", "Agile", "Scrum"
+            "Machine Learning", "AI", "Data Science", "DevOps", "Agile", "Scrum","healthcare"
         };
 
         if (this.skills == null) {

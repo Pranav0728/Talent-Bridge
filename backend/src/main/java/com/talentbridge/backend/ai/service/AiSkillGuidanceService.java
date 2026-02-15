@@ -17,17 +17,23 @@ public class AiSkillGuidanceService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SkillGuidanceResponseDTO getSkillGuidance(SkillGuidanceRequestDTO request) {
+        System.out.println("AiSkillGuidanceService: Getting guidance for skill: " + request.getSkill() + " with score: " + request.getCurrentMatchScore());
         try {
             // Call GroqCloud API to get AI-generated guidance
             String aiResponse = groqCloudService.generateSkillGuidance(
                 request.getSkill(), 
                 request.getCurrentMatchScore()
             );
+            System.out.println("AiSkillGuidanceService: Received AI response: " + aiResponse);
 
             // Parse the JSON response
-            return parseAiResponse(aiResponse, request.getSkill());
+            SkillGuidanceResponseDTO result = parseAiResponse(aiResponse, request.getSkill());
+            System.out.println("AiSkillGuidanceService: Parsed response successfully");
+            return result;
 
         } catch (Exception e) {
+            System.err.println("AiSkillGuidanceService: Error getting guidance: " + e.getMessage());
+            e.printStackTrace();
             // Return fallback guidance if AI fails
             return generateFallbackGuidance(request.getSkill(), request.getCurrentMatchScore());
         }

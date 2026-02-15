@@ -46,6 +46,20 @@ public class InterviewRoundController {
         }
     }
 
+    // Update interview round details
+    @PutMapping("/{roundId}/recruiter/{recruiterId}")
+    public ResponseEntity<InterviewRoundResponseDTO> updateInterviewRound(
+            @PathVariable Long roundId,
+            @PathVariable Long recruiterId,
+            @RequestBody InterviewRoundRequestDTO requestDTO) {
+        try {
+            InterviewRoundResponseDTO response = interviewRoundService.updateInterviewRound(roundId, recruiterId, requestDTO);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     // Get all rounds for a candidate
     @GetMapping("/candidate/{candidateId}")
     public ResponseEntity<List<InterviewRoundResponseDTO>> getRoundsByCandidate(@PathVariable Long candidateId) {

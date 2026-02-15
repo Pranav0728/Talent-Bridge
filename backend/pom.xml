@@ -89,6 +89,12 @@
         <artifactId>spring-boot-starter-webflux</artifactId>
     </dependency>
 
+    <!-- Spring Boot Web Client for HTTP requests -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webflux</artifactId>
+    </dependency>
+
     <!-- Spring Boot Mail for email notifications -->
     <dependency>
         <groupId>org.springframework.boot</groupId>

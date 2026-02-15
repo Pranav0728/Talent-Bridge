@@ -92,4 +92,40 @@ public class EmailService {
             e.printStackTrace();
         }
     }
+
+    public void sendInterviewRoundUpdateEmail(String toEmail, String candidateName, String jobTitle, 
+                                           String roundName, String scheduledDate, String mode, String locationOrLink) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Interview Round Updated - TalentBridge");
+            
+            String emailBody = String.format(
+                "Hello %s,\n\n" +
+                "Your interview round for %s has been updated.\n\n" +
+                "Round: %s\n" +
+                "Scheduled On: %s\n" +
+                "Mode: %s\n" +
+                "%s: %s\n\n" +
+                "Please check your TalentBridge dashboard for more details.\n\n" +
+                "Best of luck!\n" +
+                "TalentBridge Team",
+                candidateName,
+                jobTitle,
+                roundName,
+                scheduledDate,
+                mode,
+                mode.equalsIgnoreCase("ONLINE") ? "Meeting Link" : "Location",
+                locationOrLink != null ? locationOrLink : "To be announced"
+            );
+            
+            message.setText(emailBody);
+            mailSender.send(message);
+            System.out.println("Interview round update email sent successfully to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("Failed to send interview round update email to: " + toEmail);
+            e.printStackTrace();
+        }
+    }
 }

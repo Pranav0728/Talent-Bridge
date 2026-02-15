@@ -63,6 +63,8 @@ export default function SkillMatchResult({ candidateSkills, jobSkills, matchScor
   }
 
   const handleSkillClick = (skill) => {
+    console.log('Skill clicked:', skill);
+    console.log('Current match score:', displayPercentage);
     setSelectedSkill(skill);
     setIsPanelOpen(true);
   };
