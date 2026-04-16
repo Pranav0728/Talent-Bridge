@@ -96,7 +96,6 @@ export default function page() {
           headers: { ...authHeaders },
         });
       } catch (enhancedError) {
-        console.warn('Enhanced endpoint failed, falling back to basic endpoint:', enhancedError.message);
         // Fallback to basic endpoint
         res = await axios.get(`${API_URL}/jobApplications/user/${userId}`, {
           headers: { ...authHeaders },
@@ -170,15 +169,11 @@ export default function page() {
         return null
       }
       
-      const url = `${API_URL}/api/interview-rounds/application/candidate/${application.user.id}/job/${application.jobId}`
-      console.log('Fetching interview rounds from:', url)
-      console.log('Headers:', authHeaders)
-      
+      const url = `${API_URL}/api/interview-rounds/application/candidate/${application.user.id}/job/${application.jobId}`      
       const response = await axios.get(url, {
         headers: { ...authHeaders }
       })
       
-      console.log('Interview rounds response:', response.data)
       return response.data
     } catch (err) {
       console.error('Error fetching interview rounds:', err.response?.status, err.response?.data, err.message)
@@ -298,13 +293,13 @@ export default function page() {
       roundsCompleted: 0,
       totalRounds: 0
     })
+    console.log('Application data:', application)
     const [interviewRounds, setInterviewRounds] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
       const fetchData = async () => {
         try {
-          console.log('EnhancedApplicationCard - Application data:', application)
           setLoading(true)
           const rounds = await fetchInterviewRounds(application)
           if (rounds && rounds.rounds) {
@@ -613,7 +608,7 @@ function ApplicationDetailsModal({ application, jobDetails, jobLoading, jobError
   const [roundsError, setRoundsError] = useState('')
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
+  console.log(jobDetails)
   useEffect(() => {
       const fetchRounds = async () => {
         if (!application?.user?.id || !application?.jobId) return
@@ -629,7 +624,7 @@ function ApplicationDetailsModal({ application, jobDetails, jobLoading, jobError
           setRoundsLoading(true)
           setRoundsError('')
           const url = `${API_URL}/api/interview-rounds/application/candidate/${application.user.id}/job/${application.jobId}`
-          console.log('Fetching interview rounds from modal:', url)
+          
           const response = await axios.get(url, { headers: { ...authHeaders } })
           setInterviewRounds(response.data?.rounds || [])
         } catch (err) {
@@ -695,7 +690,7 @@ function ApplicationDetailsModal({ application, jobDetails, jobLoading, jobError
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-lg bg-gray-50 p-4">
                     <p className="text-sm text-gray-600">Company</p>
-                    <p className="mt-1 font-medium text-gray-900">{jobDetails.company || '—'}</p>
+                    <p className="mt-1 font-medium text-gray-900">{jobDetails.recruiter.company_name || '—'}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-4">
                     <p className="text-sm text-gray-600">Location</p>
@@ -708,7 +703,7 @@ function ApplicationDetailsModal({ application, jobDetails, jobLoading, jobError
                   <div className="rounded-lg bg-gray-50 p-4">
                     <p className="text-sm text-gray-600">Salary Range</p>
                     <p className="mt-1 font-medium text-gray-900">
-                      {jobDetails.salaryRange ? `${jobDetails.salaryRange}` : '—'}
+                      {jobDetails.salary ? `${jobDetails.salary}` : '—'}
                     </p>
                   </div>
                 </div>
@@ -813,7 +808,7 @@ function ApplicationDetailsModal({ application, jobDetails, jobLoading, jobError
                   <div className="space-y-3">
                     <p className="text-gray-800">
                       <span className="font-semibold">Company:</span>{' '}
-                      {jobDetails.company || '—'}
+                      {jobDetails.recruiter.company_name || '—'}
                     </p>
                     <p className="text-gray-800">
                       <span className="font-semibold">Location:</span>{' '}

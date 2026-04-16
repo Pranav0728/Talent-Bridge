@@ -71,6 +71,8 @@ function page() {
               }
             }
           )
+          
+          console.log('Enhanced applications response:', applicationsResponse.data)
         } catch (appError) {
           console.warn('Enhanced endpoint failed, falling back to basic applications:', appError.message)
           // Fallback to basic applications if enhanced endpoint fails
@@ -593,7 +595,7 @@ function page() {
                         </h3>
                         <p className="text-gray-600 text-sm flex items-center">
                           <Calendar className="w-4 h-4 mr-2" />
-                          Applied {formatDate(application.appliedDate)}
+                          Applied {formatDate(application.appliedAt)}
                         </p>
                       </div>
                     </div>
@@ -608,10 +610,10 @@ function page() {
                       <Mail className="w-5 h-5 text-indigo-500 mr-3" />
                       <span className="font-medium">{application.user?.email || '—'}</span>
                     </div>
-                    <div className="flex items-center text-gray-700 bg-white/50 px-4 py-3 rounded-xl">
+                    {/* <div className="flex items-center text-gray-700 bg-white/50 px-4 py-3 rounded-xl">
                       <Phone className="w-5 h-5 text-emerald-500 mr-3" />
                       <span className="font-medium">{application.user?.phone || '—'}</span>
-                    </div>
+                    </div> */}
                   </div>
                   
                   <div className="border-t border-gray-100 pt-6 flex flex-col sm:flex-row items-center justify-between">
